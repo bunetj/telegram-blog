@@ -1,4 +1,5 @@
-# telegram-blog
-use fake telegram channels for your personal notes
+# telegram blog
+
+use fake telegram channels for your notes
 
 ![](demo.gif)
