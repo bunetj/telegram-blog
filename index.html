@@ -1,0 +1,2603 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<base href="/">
+<title>Fake Telegram Subscriptions</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #17212b;   /* telegram dark bg */
+    color: #e1e1e1;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    font-size: 14px;
+  }
+
+  /* ============ SIDEBAR ============ */
+  #sidebar {
+    width: 80px;
+    background: #0e1621;   /* darker telegram sidebar */
+    border-right: 1px solid #101921;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 0;
+    gap: 2px;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  #sidebar::-webkit-scrollbar { width: 4px; }
+  #sidebar::-webkit-scrollbar-thumb { background: #2b3a4a; border-radius: 2px; }
+
+  .folder-item {
+    width: 100%;
+    min-height: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 4px;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 6px;
+  }
+  .folder-item:hover { background: #17212b; }
+  .folder-item.add-folder .folder-icon {
+    color: #5a9fd4;
+    font-weight: 300;
+  }
+  .folder-item.add-folder .folder-label {
+    color: #5a9fd4;
+  }
+  .folder-item.active { background: #2b3a4a; }
+
+  .folder-item.dragging { opacity: 0.4; }
+  .folder-item.drag-over { outline: 2px dashed #5a9fd4; outline-offset: -2px; }
+
+  .folder-icon {
+    font-size: 18px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .folder-label {
+    font-size: 10px;
+    line-height: 1.15;
+    text-align: center;
+    margin-top: 3px;
+    color: #7d8b99;
+    word-break: break-word;
+    width: 100%;
+    padding: 0 2px;
+  }
+  .folder-item.active .folder-label { color: #fff; }
+
+  /* ============ MAIN ============ */
+  #main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+    background: #17212b;
+  }
+
+  #main-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid #101921;
+    flex-shrink: 0;
+    background: #17212b;
+  }
+  #main-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+  }
+  #channels-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 0;
+  }
+  #channels-list::-webkit-scrollbar { width: 8px; }
+  #channels-list::-webkit-scrollbar-thumb { background: #2b3a4a; border-radius: 4px; }
+
+  /* channel row is an <a> so hover shows link in browser status bar */
+  .channel-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+  }
+  .channel-row:hover { background: #202b36; }
+  .channel-row { position: relative; }
+  .channel-row .archive-btn {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    user-select: none;
+    background: transparent;
+    opacity: 0;
+  }
+  .channel-row .archive-btn:hover {
+    background: #2b3a4a;
+    opacity: 1;
+  }
+  .channel-row.dragging { opacity: 0.4; }
+  .channel-row.drag-over { outline: 2px dashed #5a9fd4; outline-offset: -2px; }
+  .channel-row-new .channel-avatar {
+    color: #5a9fd4;
+    font-weight: 300;
+    background: #1e2b38;
+  }
+
+  .channel-avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: #2b3a4a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .channel-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .channel-title-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .channel-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .channel-desc {
+    font-size: 12px;
+    color: #7d8b99;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+  }
+
+  /* folder tag shown in chat list */
+  .folder-tag {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 8px;
+    color: #fff;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .folder-tag.light {
+    color: #17212b;
+  }
+
+  /* ============ CONTEXT MENU ============ */
+  #ctx-menu {
+    position: fixed;
+    background: #1c2733;
+    border: 1px solid #2b3a4a;
+    border-radius: 8px;
+    padding: 6px 0;
+    min-width: 190px;
+    z-index: 1000;
+    display: none;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  }
+  #ctx-menu .ctx-item {
+    padding: 8px 14px;
+    font-size: 13px;
+    color: #d4d4d4;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  #ctx-menu .ctx-item:hover { background: #2b3a4a; }
+  #ctx-menu .ctx-sep {
+    height: 1px;
+    background: #2b3a4a;
+    margin: 4px 0;
+  }
+
+  /* ============ MODAL ============ */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: #1c2733;
+    border: 1px solid #2b3a4a;
+    border-radius: 10px;
+    width: 440px;
+    max-width: 94vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 18px;
+    color: #d4d4d4;
+  }
+  .modal h3 {
+    font-size: 16px;
+    color: #fff;
+    margin-bottom: 14px;
+  }
+  .modal label {
+    display: block;
+    font-size: 12px;
+    color: #7d8b99;
+    margin: 12px 0 4px;
+  }
+  .modal input[type="text"],
+  .modal textarea {
+    width: 100%;
+    background: #17212b;
+    border: 1px solid #2b3a4a;
+    border-radius: 6px;
+    color: #e1e1e1;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: vertical;
+  }
+  .modal input[type="text"]:focus,
+  .modal textarea:focus { outline: none; border-color: #5a9fd4; }
+
+  .modal .hint {
+    font-size: 11px;
+    color: #5a6b7a;
+    margin-top: 4px;
+  }
+
+  .modal .row-btns {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 18px;
+  }
+  .modal button {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid #2b3a4a;
+    background: #2b3a4a;
+    color: #eee;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .modal button:hover { background: #3a4d61; }
+  .modal button.primary { background: #5a9fd4; border-color: #5a9fd4; color: #fff; }
+  .modal button.primary:hover { background: #4a8fc4; }
+  .modal button.link-btn {
+    background: transparent;
+    border: none;
+    color: #5a9fd4;
+    padding: 4px 0;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .modal button.link-btn:hover { text-decoration: underline; background: transparent; }
+  .modal button.danger {
+    background: transparent;
+    border-color: #e57373;
+    color: #e57373;
+  }
+  .modal button.danger:hover {
+    background: #e57373;
+    color: #fff;
+  }
+
+  /* аватарка в Edit Channel */
+  .avatar-edit {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .avatar-edit .avatar-preview {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #2b3a4a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    overflow: visible;
+    flex-shrink: 0;
+  }
+  .avatar-edit .avatar-preview img {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+  }
+  .avatar-edit .avatar-upload-btn {
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #5a9fd4;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    cursor: pointer;
+    border: 2px solid #1c2733;
+    user-select: none;
+  }
+  .avatar-edit .avatar-upload-btn:hover { background: #4a8fc4; }
+
+  .emoji-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 4px;
+  }
+  .emoji-grid span {
+    font-size: 22px;
+    cursor: pointer;
+    padding: 2px 5px;
+    border-radius: 4px;
+  }
+  .emoji-grid span:hover { background: #2b3a4a; }
+  .emoji-grid span.selected { background: #5a9fd4; }
+
+  #fm-search {
+    width: 100%;
+    background: #17212b;
+    border: 1px solid #2b3a4a;
+    border-radius: 6px;
+    color: #e1e1e1;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    margin-bottom: 4px;
+  }
+  #fm-search:focus { outline: none; border-color: #5a9fd4; }
+
+  .check-list {
+    height: 130px;
+    overflow-y: auto;
+    border: 1px solid #2b3a4a;
+    border-radius: 6px;
+    padding: 4px;
+    background: #17212b;
+  }
+  .check-list label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #ccc;
+    padding: 4px 6px;
+    margin: 0;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  .check-list label:hover { background: #202b36; }
+  .check-list input { accent-color: #5a9fd4; }
+
+  .color-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+  }
+  .color-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+  }
+  .color-swatch.selected { border-color: #fff; }
+  .color-swatch.no-tag {
+    background: transparent;
+    border: 2px dashed #5a6b7a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: #7d8b99;
+    width: auto;
+    border-radius: 12px;
+    padding: 0 8px;
+    height: 24px;
+  }
+  .color-swatch.no-tag.selected { border-color: #fff; border-style: solid; }
+
+  /* ============ CHANNEL VIEW ============ */
+  #channel-view {
+    display: none;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+  #channel-view.open { display: flex; }
+  body.channel-open #channels-list { display: none; }
+  body.channel-open #main-header { display: none; }
+
+  #channel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid #101921;
+    flex-shrink: 0;
+    background: #17212b;
+  }
+  #channel-back {
+    background: transparent;
+    border: none;
+    color: #5a9fd4;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+  }
+  #channel-back:hover { background: #202b36; }
+  #channel-header-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    flex: 1;
+    min-width: 0;
+  }
+  #channel-header-emoji {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: #2b3a4a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  #channel-header-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #channel-posts {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 0;
+    background: #101921;
+  }
+  #channel-posts::-webkit-scrollbar { width: 8px; }
+  #channel-posts::-webkit-scrollbar-thumb { background: #2b3a4a; border-radius: 4px; }
+
+  .post {
+    background: #1c2733;
+    border: 1px solid #2b3a4a;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #e1e1e1;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-width: 70%;
+    align-self: flex-start;
+  }
+  .post a { color: #5a9fd4; text-decoration: none; }
+  .post a:hover { text-decoration: underline; }
+  .post .local-link {
+    color: #5a9fd4;
+    cursor: pointer;
+  }
+  .post .local-link:hover { text-decoration: underline; }
+  .post.editing { outline: 1px solid #5a9fd4; }
+  .post.highlight-post { outline: 2px solid #5a9fd4; background: #24323f; }
+
+  .post-empty {
+    color: #5a6b7a;
+    font-size: 13px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  #channel-input-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 10px 16px;
+    border-top: 1px solid #101921;
+    background: #17212b;
+    flex-shrink: 0;
+  }
+  #channel-input {
+    flex: 1;
+    background: #1c2733;
+    border: 1px solid #2b3a4a;
+    border-radius: 8px;
+    color: #e1e1e1;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: none;
+    min-height: 36px;
+    max-height: 140px;
+  }
+  #channel-input:focus { outline: none; border-color: #5a9fd4; }
+  #channel-send {
+    background: #5a9fd4;
+    border: none;
+    color: #fff;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  #channel-send:hover { background: #4a8fc4; }
+
+  /* bio modal */
+  #bio-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2100;
+  }
+  #bio-overlay.open { display: flex; }
+  #bio-box {
+    background: #1c2733;
+    border: 1px solid #2b3a4a;
+    border-radius: 10px;
+    padding: 20px;
+    width: 360px;
+    max-width: 92vw;
+    color: #d4d4d4;
+    text-align: center;
+  }
+  #bio-box .bio-emoji {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: #2b3a4a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    margin: 0 auto 10px;
+  }
+  #bio-box .bio-title {
+    font-size: 16px;
+    color: #fff;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  #bio-box .bio-desc {
+    font-size: 13px;
+    color: #b0b0b0;
+    white-space: pre-wrap;
+    margin-bottom: 12px;
+  }
+  #bio-box .bio-desc a {
+    color: #5a9fd4;
+    text-decoration: none;
+  }
+  #bio-box .bio-desc a:hover { text-decoration: underline; }
+  #bio-box .bio-desc .local-link {
+    color: #5a9fd4;
+    cursor: pointer;
+  }
+  #bio-box .bio-desc .local-link:hover { text-decoration: underline; }
+  #bio-box .bio-link {
+    display: inline-block;
+    color: #5a9fd4;
+    text-decoration: none;
+    font-size: 13px;
+    word-break: break-all;
+    margin-bottom: 12px;
+  }
+  #bio-box .bio-link:hover { text-decoration: underline; }
+  #bio-box .bio-edit,
+  #bio-box .bio-close {
+    display: block;
+    background: #2b3a4a;
+    border: none;
+    color: #eee;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  #bio-box .bio-close:hover { background: #3a4d61; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside id="sidebar"></aside>
+
+<!-- MAIN -->
+<main id="main">
+  <div id="main-header">
+    <div id="main-title">All chats</div>
+  </div>
+  <div id="channels-list"></div>
+
+  <div id="channel-view">
+    <div id="channel-header">
+      <button id="channel-back" title="Back">←</button>
+      <div id="channel-header-info">
+        <div id="channel-header-emoji">📢</div>
+        <div id="channel-header-title">Channel</div>
+      </div>
+    </div>
+    <div id="channel-posts"></div>
+    <div id="channel-input-row">
+      <textarea id="channel-input" rows="1" placeholder="Message"></textarea>
+      <button id="channel-send">Send</button>
+    </div>
+  </div>
+</main>
+
+<div id="bio-overlay">
+  <div id="bio-box">
+    <div class="bio-emoji">📢</div>
+    <div class="bio-title"></div>
+    <div class="bio-desc"></div>
+    <a class="bio-link" target="_blank" rel="noopener" style="display:none;"></a>
+    <div style="display:flex; gap:8px; justify-content:center;">
+      <button class="bio-edit">Edit</button>
+      <button class="bio-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div id="ctx-menu"></div>
+
+<!-- MODAL: FOLDER -->
+<div class="modal-overlay" id="folder-modal-overlay">
+  <div class="modal" id="folder-modal"></div>
+</div>
+
+<!-- MODAL: CHANNEL -->
+<div class="modal-overlay" id="channel-modal-overlay">
+  <div class="modal" id="channel-modal"></div>
+</div>
+
+<script>
+/* =========================================================
+   STATE
+   ========================================================= */
+const FOLDER_COLORS = ['#e57373','#ffb74d','#ffd54f','#81c784','#4fc3f7','#9575cd','#f06292','#a1887f'];
+
+const DEFAULT_STATE = {
+  folders: [
+    { id: 'all', name: '', icon: '📁', isAll: true, included: 'all', excluded: [], color: null },
+    { id: 'archived', name: 'Archived', icon: '📦', isSystem: true, isArchived: true, included: [], excluded: [], color: null },
+    { id: 'unfold', name: 'Unfolderized', icon: '📭', isSystem: true, included: [], excluded: [], color: null }
+  ],
+  channels: [],
+  activeFolderId: 'all',
+  editingChannelId: null,
+  editingFolderId: null
+};
+
+let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+
+// UI-режим: null = список каналов, иначе id канала, чей экран открыт
+let openedChannelId = null;
+let editingPostId = null;
+
+// стек черновиков на канал: { channelId: [{kind, postId?, text}, ...] }
+// верхний элемент стека — то, что в textbox.
+let draftsStack = (() => {
+  try {
+    const raw = localStorage.getItem('subscriptions_drafts_v2');
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+    return parsed;
+  } catch (e) { return {}; }
+})();
+
+function saveDrafts() {
+  try {
+    localStorage.setItem('subscriptions_drafts_v2', JSON.stringify(draftsStack));
+  } catch (e) {}
+}
+
+// получить верхний черновик для канала
+function topDraft(channelId) {
+  const s = draftsStack[channelId];
+  if (!s || s.length === 0) return null;
+  return s[s.length - 1];
+}
+
+// запушить новый черновик
+function pushDraft(channelId, d) {
+  if (!draftsStack[channelId]) draftsStack[channelId] = [];
+  draftsStack[channelId].push(d);
+  saveDrafts();
+}
+
+// снять верхний черновик и вернуть его
+function popDraft(channelId) {
+  const s = draftsStack[channelId];
+  if (!s || s.length === 0) return null;
+  const d = s.pop();
+  if (s.length === 0) delete draftsStack[channelId];
+  saveDrafts();
+  return d;
+}
+
+// найти в стеке edit-черновик по postId
+function findEditDraft(channelId, postId) {
+  const s = draftsStack[channelId];
+  if (!s) return -1;
+  for (let i = s.length - 1; i >= 0; i--) {
+    if (s[i].kind === 'edit' && s[i].postId === postId) return i;
+  }
+  return -1;
+}
+
+/* =========================================================
+   ROUTING (history API)
+   ========================================================= */
+function pushUrl(path) {
+  if (location.pathname === path) return;
+  history.pushState({}, '', path);
+}
+
+function parseLocation() {
+  // /                       -> All chats
+  // /f/<folderId>           -> папка
+  // /c/<channelId>          -> экран канала
+  // /c/<channelId>/p/<post> -> канал + пост
+  const path = location.pathname.replace(/\/+$/, '') || '/';
+  const parts = path.split('/').filter(Boolean);
+
+  if (parts.length === 0) {
+    state.activeFolderId = 'all';
+    closeChannelView();
+    renderSidebar();
+    renderChannels();
+    return;
+  }
+
+  if (parts[0] === 'f' && parts[1]) {
+    const fid = decodeURIComponent(parts[1]);
+    const folder = state.folders.find(x => x.id === fid);
+    state.activeFolderId = folder ? fid : 'all';
+    closeChannelView();
+    renderSidebar();
+    renderChannels();
+    return;
+  }
+
+  if (parts[0] === 'c' && parts[1]) {
+    const slugOrId = decodeURIComponent(parts[1]);
+    // ищем ТОЛЬКО по slug; если у канала нет slug — по id (для совместимости с Copy link без slug)
+    const c = state.channels.find(x => x.slug === slugOrId)
+           || state.channels.find(x => x.id === slugOrId);
+    if (!c) {
+      state.activeFolderId = 'all';
+      closeChannelView();
+      renderSidebar();
+      renderChannels();
+      return;
+    }
+    const postNum = (parts[2] === 'p' && parts[3])
+      ? parseInt(decodeURIComponent(parts[3]), 10)
+      : null;
+    renderSidebar();
+    renderChannels();
+    openChannelView(c.id, postNum, true);
+    return;
+  }
+
+  // неизвестный путь — All chats
+  state.activeFolderId = 'all';
+  closeChannelView();
+  renderSidebar();
+  renderChannels();
+}
+
+window.addEventListener('popstate', () => {
+  parseLocation();
+});
+
+/* =========================================================
+   RENDER
+   ========================================================= */
+const sidebarEl = document.getElementById('sidebar');
+const mainTitleEl = document.getElementById('main-title');
+const channelsListEl = document.getElementById('channels-list');
+
+/* =========================================================
+   PERSISTENCE
+   ========================================================= */
+const STORAGE_KEY = 'subscriptions_state_v1';
+const DRAFTS_KEY = 'subscriptions_drafts_v1';
+
+async function loadState() {
+  // 1) пробуем data.json с сервера
+  try {
+    const r = await fetch('./data.json', { cache: 'no-store' });
+    if (r.ok) {
+      const data = await r.json();
+      if (data && data.folders && data.channels) {
+        state = Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATE)), data);
+        ensureSystemFolders();
+        ensurePostNumbers();
+        return;
+      }
+    }
+  } catch (e) {
+    // сервер не запущен / файла нет — не страшно
+  }
+
+  // 2) fallback: localStorage
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data && data.folders && data.channels) {
+        state = Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATE)), data);
+        ensureSystemFolders();
+        ensurePostNumbers();
+        return;
+      }
+    }
+  } catch (e) {}
+
+  ensureSystemFolders();
+  ensurePostNumbers();
+}
+
+function ensurePostNumbers() {
+  state.channels.forEach(c => {
+    if (!Array.isArray(c.posts)) { c.posts = []; return; }
+    let max = 0;
+    c.posts.forEach(p => {
+      if (typeof p.number === 'number' && p.number > max) max = p.number;
+    });
+    c.posts.forEach(p => {
+      if (typeof p.number !== 'number') {
+        max += 1;
+        p.number = max;
+      }
+    });
+  });
+}
+
+function ensureSystemFolders() {
+  // archived
+  if (!state.folders.find(f => f.id === 'archived')) {
+    const allIdx = state.folders.findIndex(f => f.id === 'all');
+    const archived = { id: 'archived', name: 'Archived', icon: '📦', isSystem: true, isArchived: true, included: [], excluded: [], color: null };
+    if (allIdx >= 0) state.folders.splice(allIdx + 1, 0, archived);
+    else state.folders.unshift(archived);
+  }
+  // unfold
+  const existing = state.folders.find(f => f.id === 'unfold');
+  if (existing) {
+    existing.icon = '📭';
+    existing.name = 'Unfolderized';
+    existing.isSystem = true;
+  } else {
+    const allIdx = state.folders.findIndex(f => f.id === 'all');
+    const unfold = { id: 'unfold', name: 'Unfolderized', icon: '📭', isSystem: true, included: [], excluded: [], color: null };
+    if (allIdx >= 0) state.folders.splice(allIdx + 1, 0, unfold);
+    else state.folders.unshift(unfold);
+  }
+  // гарантируем c.archived = false у всех
+  state.channels.forEach(c => { if (c.archived !== true) c.archived = false; });
+}
+
+function hasArchived() {
+  return state.channels.some(c => c.archived);
+}
+
+async function saveState() {
+  const payload = {
+    folders: state.folders,
+    channels: state.channels,
+    activeFolderId: state.activeFolderId
+  };
+
+  // localStorage — синхронно, всегда
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  } catch (e) {}
+
+  // data.json через сервер — если доступен
+  try {
+    await fetch('./save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    // сервер не запущен — работаем только на localStorage
+  }
+}
+
+function renderSidebar() {
+  sidebarEl.innerHTML = '';
+
+  // "+ new folder" button on top
+  const addFolderBtn = document.createElement('div');
+  addFolderBtn.className = 'folder-item add-folder';
+  addFolderBtn.innerHTML = `
+    <div class="folder-icon">＋</div>
+    <div class="folder-label">New</div>
+  `;
+  addFolderBtn.addEventListener('click', openNewFolderModal);
+  sidebarEl.appendChild(addFolderBtn);
+
+  state.folders.forEach(f => {
+    // Archived виден, только если есть хоть один архивный канал
+    if (f.isArchived && !hasArchived()) return;
+
+    const el = document.createElement('div');
+    el.className = 'folder-item' + (f.id === state.activeFolderId ? ' active' : '');
+    el.dataset.folderId = f.id;
+    el.innerHTML = `
+      ${f.icon ? `<div class="folder-icon">${f.icon}</div>` : ''}
+      ${f.isAll ? '' : `<div class="folder-label">${escapeHtml(f.name)}</div>`}
+    `;
+    el.addEventListener('click', () => selectFolder(f.id));
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (f.isAll || f.isSystem) return;
+      openFolderModal(f.id);
+    });
+
+    // drag-n-drop: All chats и системные не участвуют
+    if (!f.isAll && !f.isSystem) {
+      el.draggable = true;
+      el.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('text/folder-id', f.id);
+        e.dataTransfer.effectAllowed = 'move';
+        el.classList.add('dragging');
+      });
+      el.addEventListener('dragend', () => {
+        el.classList.remove('dragging');
+        sidebarEl.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
+      });
+      el.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        el.classList.add('drag-over');
+      });
+      el.addEventListener('dragleave', () => {
+        el.classList.remove('drag-over');
+      });
+      el.addEventListener('drop', (e) => {
+        e.preventDefault();
+        el.classList.remove('drag-over');
+        const srcId = e.dataTransfer.getData('text/folder-id');
+        if (!srcId || srcId === f.id) return;
+        reorderFolders(srcId, f.id);
+      });
+    }
+
+    sidebarEl.appendChild(el);
+  });
+}
+
+function renderChannels() {
+  const folder = state.folders.find(f => f.id === state.activeFolderId);
+  mainTitleEl.textContent = folder.name || (folder.isAll ? 'All chats' : 'Folder');
+
+  let visible;
+  if (state.activeFolderId === 'archived') {
+    // только архивные
+    visible = state.channels.filter(c => c.archived === true);
+  } else if (state.activeFolderId === 'unfold') {
+    // неразложенные + НЕ архивные
+    const userFolderIds = state.folders
+      .filter(f => !f.isAll && !f.isSystem)
+      .map(f => f.id);
+    visible = state.channels.filter(c =>
+      c.archived !== true &&
+      !c.folderIds.some(id => userFolderIds.includes(id))
+    );
+  } else if (state.activeFolderId === 'all') {
+    // All chats — скрываем архивные
+    visible = state.channels.filter(c =>
+      c.archived !== true &&
+      c.folderIds.includes('all')
+    );
+  } else {
+    // пользовательская папка — показываем ВСЁ, включая архивные
+    visible = state.channels.filter(c =>
+      c.folderIds.includes(state.activeFolderId)
+    );
+  }
+  channelsListEl.innerHTML = '';
+
+  // "New channel" row — не в Unfolderized
+  if (state.activeFolderId !== 'unfold' && state.activeFolderId !== 'archived') {
+    const newRow = document.createElement('div');
+    newRow.className = 'channel-row channel-row-new';
+    newRow.innerHTML = `
+      <div class="channel-avatar">＋</div>
+      <div class="channel-info">
+        <div class="channel-title" style="color:#5a9fd4;">New channel</div>
+      </div>
+    `;
+    newRow.addEventListener('click', () => openChannelModal(null));
+    channelsListEl.appendChild(newRow);
+  }
+
+  if (visible.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'padding:30px 20px;color:#5a6b7a;font-size:13px;';
+    empty.textContent = 'No channels in this folder yet.';
+    channelsListEl.appendChild(empty);
+    return;
+  }
+  visible.forEach(c => {
+    const isLocal = isLocalPath(c.link);
+    const row = document.createElement('a');
+    row.className = 'channel-row';
+    row.dataset.channelId = c.id;
+    // href so browser shows link in status bar on hover; click is intercepted
+    // для локальных путей href не ставим (браузер не должен пытаться открыть)
+    if (c.link && !isLocal) {
+      // нормальный URL: href есть, чтобы браузер сам обработал
+      // ctrl+клик и middle-click (новая вкладка)
+      row.href = c.link;
+      row.target = '_blank';
+      row.rel = 'noopener';
+    } else if (c.link) {
+      // локальный путь: href не ставим, чтобы браузер не пытался открыть
+      row.removeAttribute('href');
+      row.title = c.link;
+    }
+    // build folder tags for channels shown in current folder view
+    const tags = state.folders
+      .filter(f => !f.isAll && f.color && c.folderIds.includes(f.id))
+      .map(f => {
+        const light = isLightColor(f.color) ? ' light' : '';
+        return `<span class="folder-tag${light}" style="background:${f.color}">${escapeHtml(f.name)}</span>`;
+      })
+      .join('');
+
+    row.innerHTML = `
+      <div class="channel-avatar"${!c.avatarPath && c.avatarColor ? ` style="background:${c.avatarColor};color:${isLightColor(c.avatarColor) ? '#17212b' : '#fff'}"` : ''}>${c.avatarPath ? `<img src="${escapeAttr(c.avatarPath)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">` : (c.emoji || '')}</div>
+      <div class="channel-info">
+        <div class="channel-title-line">
+          <div class="channel-title">${escapeHtml(c.title)}</div>
+          ${tags}
+        </div>
+        <div class="channel-desc">${escapeHtml(c.desc || '')}</div>
+      </div>
+    `;
+    row.addEventListener('click', (e) => {
+      e.preventDefault();
+      openChannelView(c.id);
+    });
+
+
+    row.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openChannelModal(c.id);
+    });
+
+    // archive / unarchive button (right side of row, on hover)
+    const archiveBtn = document.createElement('div');
+    archiveBtn.className = 'archive-btn';
+    if (state.activeFolderId === 'archived') {
+      archiveBtn.textContent = '📤';
+      archiveBtn.title = 'Unarchive';
+      archiveBtn.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        unarchiveChannel(c.id);
+      });
+    } else {
+      archiveBtn.textContent = '📥';
+      archiveBtn.title = 'Archive';
+      archiveBtn.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        archiveChannel(c.id);
+      });
+    }
+    row.appendChild(archiveBtn);
+
+    // drag-n-drop для каналов (кроме Archived)
+    if (state.activeFolderId === 'archived') {
+      // no drag in Archived
+      channelsListEl.appendChild(row);
+      return;
+    }
+    row.draggable = true;
+    row.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/channel-id', c.id);
+      e.dataTransfer.effectAllowed = 'move';
+      row.classList.add('dragging');
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      channelsListEl.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
+    });
+    row.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', () => {
+      row.classList.remove('drag-over');
+    });
+    row.addEventListener('drop', (e) => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      const srcId = e.dataTransfer.getData('text/channel-id');
+      if (!srcId || srcId === c.id) return;
+      reorderChannels(srcId, c.id);
+    });
+
+    channelsListEl.appendChild(row);
+  });
+}
+
+function selectFolder(id, skipPush) {
+  state.activeFolderId = id;
+  closeChannelView();
+  renderSidebar();
+  renderChannels();
+  saveState();
+  if (!skipPush) pushUrl('/f/' + encodeURIComponent(id));
+}
+
+/* =========================================================
+   CONTEXT MENUS
+   ========================================================= */
+const ctxMenu = document.getElementById('ctx-menu');
+
+function hideCtxMenu() { ctxMenu.style.display = 'none'; }
+
+// left click вне меню -> закрыть
+document.addEventListener('click', (e) => {
+  if (!ctxMenu.contains(e.target)) hideCtxMenu();
+});
+
+// ПКМ вне меню -> закрыть старое меню (новое откроет обработчик элемента)
+document.addEventListener('contextmenu', (e) => {
+  if (!ctxMenu.contains(e.target)) hideCtxMenu();
+});
+
+// ПКМ прямо по открытому меню -> не закрывать, дать сработать клику
+ctxMenu.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+});
+
+document.addEventListener('scroll', hideCtxMenu, true);
+window.addEventListener('blur', hideCtxMenu);
+window.addEventListener('resize', hideCtxMenu);
+
+function showFolderContextMenu(e, folderId) {
+  ctxMenu.innerHTML = `
+    <div class="ctx-item" data-action="edit-folder">Edit Folder</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" data-action="delete-folder">Delete Folder</div>
+  `;
+  ctxMenu.style.left = e.clientX + 'px';
+  ctxMenu.style.top = e.clientY + 'px';
+  ctxMenu.style.display = 'block';
+
+  ctxMenu.querySelectorAll('.ctx-item').forEach(item => {
+    item.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+      const action = item.dataset.action;
+      hideCtxMenu();
+      if (action === 'edit-folder') openFolderModal(folderId);
+      if (action === 'delete-folder') deleteFolder(folderId);
+    });
+  });
+}
+
+function showChannelContextMenu(e, channelId) {
+  ctxMenu.innerHTML = `
+    <div class="ctx-item" data-action="edit-channel">Edit Channel</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" data-action="remove-from-folder">Remove from this folder</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" data-action="delete-channel">Delete Channel</div>
+  `;
+  ctxMenu.style.left = e.clientX + 'px';
+  ctxMenu.style.top = e.clientY + 'px';
+  ctxMenu.style.display = 'block';
+
+  ctxMenu.querySelectorAll('.ctx-item').forEach(item => {
+    item.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+      const action = item.dataset.action;
+      hideCtxMenu();
+      if (action === 'edit-channel') openChannelModal(channelId);
+      if (action === 'delete-channel') deleteChannel(channelId);
+      if (action === 'remove-from-folder') removeFromFolder(channelId, state.activeFolderId);
+    });
+  });
+}
+
+/* =========================================================
+   FOLDER MODAL  (matches the mockup in the spec)
+   ========================================================= */
+const folderModalOverlay = document.getElementById('folder-modal-overlay');
+const folderModalEl = document.getElementById('folder-modal');
+
+function openNewFolderModal() {
+  const id = 'f' + Date.now();
+  state.folders.push({
+    id,
+    name: 'New folder',
+    icon: '📁',
+    isAll: false,
+    included: [],
+    excluded: [],
+    color: null
+  });
+  renderSidebar();
+  saveState();
+  openFolderModal(id);
+}
+
+function openFolderModal(folderId) {
+  const f = state.folders.find(x => x.id === folderId);
+  if (!f) return;
+  state.editingFolderId = folderId;
+
+  folderModalEl.innerHTML = `
+    <h3>Edit Folder</h3>
+
+    <label>Icon</label>
+    <input type="text" id="fm-icon" maxlength="4" value="${escapeAttr(f.icon || '')}" style="width:80px;text-align:center;font-size:20px;">
+
+    <label>Folder name</label>
+    <input type="text" id="fm-name" value="${escapeAttr(f.name)}">
+
+    <label>Included chats</label>
+    <input type="text" id="fm-search" placeholder="Search chats..." autocomplete="off">
+    <div class="check-list" id="fm-included"></div>
+    <div class="hint">Choose chats that will appear in this folder.</div>
+
+    <label>Folder color in chat list</label>
+    <div class="hint">Choose a color for the tag of this folder.</div>
+    <div class="color-row" id="fm-colors"></div>
+
+    <div class="row-btns">
+      <button id="fm-delete" class="danger" style="margin-right:auto;">Delete Folder</button>
+      <button id="fm-cancel">Cancel</button>
+      <button id="fm-save" class="primary">Save</button>
+    </div>
+  `;
+
+  // included list + search filter
+  const inclBox = folderModalEl.querySelector('#fm-included');
+  const searchInput = folderModalEl.querySelector('#fm-search');
+
+  function renderIncluded(filter) {
+    inclBox.innerHTML = '';
+    const q = (filter || '').toLowerCase().trim();
+    const matches = state.channels.filter(c =>
+      !q || c.title.toLowerCase().includes(q)
+    );
+    if (matches.length === 0) {
+      const empty = document.createElement('div');
+      empty.style.cssText = 'padding:8px;color:#5a6b7a;font-size:12px;';
+      empty.textContent = 'No matches';
+      inclBox.appendChild(empty);
+      return;
+    }
+    matches.forEach(c => {
+      inclBox.appendChild(makeCheckRow(c, f.included?.includes(c.id) || false, 'incl-' + c.id));
+    });
+  }
+
+  // prefill: if folder has no explicit included list, pre-check channels that
+  // are currently in this folder (so editing feels natural)
+  if (!f.included || f.included.length === 0) {
+    f.included = state.channels
+      .filter(c => c.folderIds.includes(f.id))
+      .map(c => c.id);
+  }
+  renderIncluded('');
+
+  searchInput.addEventListener('input', () => renderIncluded(searchInput.value));
+
+  // colors
+  const colorRow = folderModalEl.querySelector('#fm-colors');
+  // No Tag option
+  const noTag = document.createElement('div');
+  noTag.className = 'color-swatch no-tag' + (f.color === null ? ' selected' : '');
+  noTag.textContent = 'No Tag';
+  noTag.onclick = () => {
+    colorRow.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+    noTag.classList.add('selected');
+    colorRow.dataset.selected = '';
+  };
+  colorRow.appendChild(noTag);
+  colorRow.dataset.selected = f.color || '';
+
+  FOLDER_COLORS.forEach(col => {
+    const sw = document.createElement('div');
+    sw.className = 'color-swatch' + (f.color === col ? ' selected' : '');
+    sw.style.background = col;
+    sw.onclick = () => {
+      colorRow.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+      sw.classList.add('selected');
+      colorRow.dataset.selected = col;
+    };
+    colorRow.appendChild(sw);
+  });
+
+  folderModalEl.querySelector('#fm-cancel').onclick = closeFolderModal;
+  folderModalEl.querySelector('#fm-save').onclick = saveFolderModal;
+  folderModalEl.querySelector('#fm-delete').onclick = () => {
+    const id = state.editingFolderId;
+    closeFolderModal();
+    deleteFolder(id);
+  };
+
+  folderModalOverlay.classList.add('open');
+}
+
+function makeCheckRow(channel, checked, inputId) {
+  const label = document.createElement('label');
+  label.innerHTML = `
+    <input type="checkbox" id="${inputId}" ${checked ? 'checked' : ''} data-channel-id="${channel.id}">
+    <span>${channel.emoji ? channel.emoji + ' ' : ''}${escapeHtml(channel.title)}</span>
+  `;
+  return label;
+}
+
+function closeFolderModal() {
+  folderModalOverlay.classList.remove('open');
+  state.editingFolderId = null;
+}
+
+function saveFolderModal() {
+  const f = state.folders.find(x => x.id === state.editingFolderId);
+  if (!f) return;
+  f.name = folderModalEl.querySelector('#fm-name').value.trim() || f.name;
+  const iconVal = folderModalEl.querySelector('#fm-icon').value.trim();
+  f.icon = iconVal; // может быть пустой строкой — тогда иконка не рисуется
+  f.included = Array.from(folderModalEl.querySelectorAll('#fm-included input:checked')).map(i => i.dataset.channelId);
+  f.excluded = []; // no longer used
+  const colRow = folderModalEl.querySelector('#fm-colors');
+  f.color = colRow.dataset.selected || null;
+
+  // apply included to channel.folderIds
+  state.channels.forEach(c => {
+    const shouldInclude = f.included.includes(c.id);
+    const has = c.folderIds.includes(f.id);
+    if (shouldInclude && !has) c.folderIds.push(f.id);
+    if (!shouldInclude && has) c.folderIds = c.folderIds.filter(id => id !== f.id);
+  });
+
+  closeFolderModal();
+  renderSidebar();
+  renderChannels();
+  saveState();
+}
+
+function deleteFolder(folderId) {
+  if (folderId === 'all') return;
+  const ff = state.folders.find(x => x.id === folderId);
+  if (ff && ff.isSystem) return;
+  const f = state.folders.find(x => x.id === folderId);
+  const name = f ? (f.name || 'Untitled') : 'this folder';
+  if (!confirm('Delete folder "' + name + '"?')) return;
+  state.folders = state.folders.filter(f => f.id !== folderId);
+  state.channels.forEach(c => {
+    c.folderIds = c.folderIds.filter(id => id !== folderId);
+  });
+  if (state.activeFolderId === folderId) state.activeFolderId = 'all';
+  renderSidebar();
+  renderChannels();
+  saveState();
+}
+
+function removeFromFolder(channelId, folderId) {
+  if (folderId === 'all') return;
+  const c = state.channels.find(x => x.id === channelId);
+  if (!c) return;
+  c.folderIds = c.folderIds.filter(id => id !== folderId);
+  renderChannels();
+  saveState();
+}
+
+function deleteChannel(channelId) {
+  const ch = state.channels.find(c => c.id === channelId);
+  const name = ch ? (ch.title || 'Untitled') : 'this channel';
+  if (!confirm('Delete channel "' + name + '"?')) return;
+  state.channels = state.channels.filter(c => c.id !== channelId);
+  // sync folder.included
+  state.folders.forEach(f => {
+    if (f.isAll) return;
+    if (!Array.isArray(f.included)) f.included = [];
+    f.included = state.channels
+      .filter(ch => ch.folderIds.includes(f.id))
+      .map(ch => ch.id);
+  });
+  renderChannels();
+  saveState();
+}
+
+/* =========================================================
+   CHANNEL MODAL
+   ========================================================= */
+const channelModalOverlay = document.getElementById('channel-modal-overlay');
+const channelModalEl = document.getElementById('channel-modal');
+
+function openChannelModal(channelId) {
+  state.editingChannelId = channelId || null;
+  const c = channelId ? state.channels.find(x => x.id === channelId) : null;
+
+  channelModalEl.innerHTML = `
+    <h3>${c ? 'Edit Channel' : 'Add Channel'}</h3>
+
+    <label>Avatar</label>
+    <div class="avatar-edit">
+      <div class="avatar-preview" id="cm-avatar-preview">
+        <span id="cm-avatar-emoji">${c ? escapeAttr(c.emoji || '') : ''}</span>
+        <img id="cm-avatar-img" src="${c && c.avatarPath ? escapeAttr(c.avatarPath) + '?t=' + Date.now() : ''}" style="display:${c && c.avatarPath ? '' : 'none'};">
+        <div class="avatar-upload-btn" id="cm-avatar-upload" title="Upload photo">📷</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <input type="text" id="cm-emoji" maxlength="4" value="${c ? escapeAttr(c.emoji || '') : ''}" placeholder="emoji" style="width:80px;text-align:center;font-size:20px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div id="cm-color-swatch" title="Avatar color" style="width:24px;height:24px;border-radius:50%;background:${c && c.avatarColor ? c.avatarColor : '#2b3a4a'};border:2px solid #2b3a4a;cursor:pointer;flex-shrink:0;"></div>
+          <input type="color" id="cm-color-picker" value="${c && c.avatarColor ? c.avatarColor : '#2b3a4a'}" style="display:none;">
+          <button type="button" id="cm-color-reset" style="background:transparent;border:none;color:#5a9fd4;font-size:12px;cursor:pointer;font-family:inherit;padding:0;">Reset</button>
+          <button type="button" id="cm-avatar-remove" style="background:transparent;border:none;color:#e57373;font-size:12px;cursor:pointer;font-family:inherit;padding:0;${c && c.avatarPath ? '' : 'display:none;'}">Remove photo</button>
+        </div>
+      </div>
+      <input type="file" id="cm-avatar-file" accept="image/*" style="display:none;">
+    </div>
+
+    <label>Title</label>
+    <input type="text" id="cm-title" value="${c ? escapeAttr(c.title) : ''}">
+
+    <label>Slug (for URL)</label>
+    <input type="text" id="cm-slug" value="${c ? escapeAttr(c.slug || '') : ''}" placeholder="nabokov">
+    <div class="hint">Only a-z, A-Z, 0-9, dash, underscore. Empty = use internal id.</div>
+
+    <label>Description (shown under title)</label>
+    <textarea id="cm-desc" rows="2">${c ? escapeHtml(c.desc || '') : ''}</textarea>
+
+    <label>Folders</label>
+    <div class="check-list" id="cm-folders"></div>
+
+    <div class="row-btns">
+      <button id="cm-delete" class="danger" style="margin-right:auto; ${c ? '' : 'display:none;'}">Delete Channel</button>
+      <button id="cm-cancel">Cancel</button>
+      <button id="cm-save" class="primary">Save</button>
+    </div>
+  `;
+
+  const emojiInput = channelModalEl.querySelector('#cm-emoji');
+  const avatarPreviewEl = channelModalEl.querySelector('#cm-avatar-preview');
+  const avatarEmojiEl = channelModalEl.querySelector('#cm-avatar-emoji');
+  const avatarImgEl = channelModalEl.querySelector('#cm-avatar-img');
+  const avatarUploadEl = channelModalEl.querySelector('#cm-avatar-upload');
+  const avatarFileEl = channelModalEl.querySelector('#cm-avatar-file');
+  const avatarRemoveEl = channelModalEl.querySelector('#cm-avatar-remove');
+
+  // avatarPath: у нового канала id генерим сразу (для имени файла),
+  // в state добавим только при Save.
+  let editingId = c ? c.id : ('c' + Date.now());
+  let chosenAvatarPath = c && c.avatarPath ? c.avatarPath : null;
+
+  function refreshAvatarPreview() {
+    if (chosenAvatarPath) {
+      avatarImgEl.src = chosenAvatarPath + '?t=' + Date.now();
+      avatarImgEl.style.display = '';
+      avatarEmojiEl.style.display = 'none';
+      avatarRemoveEl.style.display = '';
+      avatarPreviewEl.style.background = 'transparent';
+      avatarPreviewEl.style.color = '';
+    } else {
+      avatarImgEl.style.display = 'none';
+      avatarEmojiEl.style.display = '';
+      avatarRemoveEl.style.display = 'none';
+      const bg = chosenColor || '#2b3a4a';
+      avatarPreviewEl.style.background = bg;
+      avatarPreviewEl.style.color = isLightColor(bg) ? '#17212b' : '#fff';
+    }
+  }
+
+  avatarUploadEl.onclick = () => {
+    avatarFileEl.value = '';
+    avatarFileEl.click();
+  };
+
+  avatarFileEl.onchange = async () => {
+    const f = avatarFileEl.files && avatarFileEl.files[0];
+    if (!f) return;
+    try {
+      const dataUrl = await compressImageToDataUrl(f, 128, 0.85);
+      const r = await fetch('./upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingId, data: dataUrl })
+      });
+      if (!r.ok) {
+        const t = await r.text().catch(() => '');
+        alert('Upload failed: ' + r.status + '\n' + t);
+        return;
+      }
+      const j = await r.json();
+      chosenAvatarPath = j.path;
+      refreshAvatarPreview();
+    } catch (e) {
+      alert('Could not process image: ' + e);
+    }
+  };
+
+  avatarRemoveEl.onclick = async () => {
+    if (!chosenAvatarPath) return;
+    try {
+      await fetch('./delete-avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingId })
+      });
+    } catch (e) {}
+    chosenAvatarPath = null;
+    refreshAvatarPreview();
+  };
+
+  // Запоминаем для saveChannelModal
+  channelModalEl._getAvatarPath = () => chosenAvatarPath;
+  channelModalEl._getEditingId = () => editingId;
+
+  // avatar color: swatch + hidden color picker
+  const swatchEl = channelModalEl.querySelector('#cm-color-swatch');
+  const pickerEl = channelModalEl.querySelector('#cm-color-picker');
+  const resetEl = channelModalEl.querySelector('#cm-color-reset');
+  const defaultColor = '#2b3a4a';
+
+  let chosenColor = c && c.avatarColor ? c.avatarColor : null;
+
+  swatchEl.onclick = () => {
+    pickerEl.value = chosenColor || defaultColor;
+    pickerEl.click();
+  };
+  pickerEl.oninput = () => {
+    chosenColor = pickerEl.value;
+    swatchEl.style.background = chosenColor;
+    refreshAvatarPreview();
+  };
+  resetEl.onclick = () => {
+    chosenColor = null;
+    swatchEl.style.background = defaultColor;
+    refreshAvatarPreview();
+  };
+  // emoji input тоже влияет на превью
+  emojiInput.addEventListener('input', () => {
+    avatarEmojiEl.textContent = emojiInput.value || '';
+  });
+  // запоминаем функцию для saveChannelModal
+  channelModalEl._getAvatarColor = () => chosenColor;
+
+  const foldersBox = channelModalEl.querySelector('#cm-folders');
+  state.folders.forEach(f => {
+    if (f.isAll || f.isSystem) return;
+    const checked = c ? c.folderIds.includes(f.id) : (state.activeFolderId === f.id);
+    const label = document.createElement('label');
+    label.innerHTML = `
+      <input type="checkbox" data-folder-id="${f.id}" ${checked ? 'checked' : ''}>
+      <span>${f.icon} ${escapeHtml(f.name)}</span>
+    `;
+    foldersBox.appendChild(label);
+  });
+
+  channelModalEl.querySelector('#cm-cancel').onclick = () => {
+    // если это новый канал и была загружена аватарка — удаляем файл
+    if (!state.editingChannelId && channelModalEl._getAvatarPath && channelModalEl._getAvatarPath()) {
+      const id = channelModalEl._getEditingId();
+      fetch('./delete-avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      }).catch(() => {});
+    }
+    closeChannelModal();
+  };
+  channelModalEl.querySelector('#cm-save').onclick = () => saveChannelModal(emojiInput.value.trim());
+  const cmDelete = channelModalEl.querySelector('#cm-delete');
+  if (cmDelete) {
+    cmDelete.onclick = () => {
+      const id = state.editingChannelId;
+      // удаляем файл аватарки
+      fetch('./delete-avatar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      }).catch(() => {});
+      closeChannelModal();
+      deleteChannel(id);
+    };
+  }
+  refreshAvatarPreview();
+  channelModalOverlay.classList.add('open');
+}
+
+function closeChannelModal() {
+  channelModalOverlay.classList.remove('open');
+  state.editingChannelId = null;
+}
+
+function saveChannelModalAndGetId(emoji) {
+  const title = channelModalEl.querySelector('#cm-title').value.trim();
+  const slugRaw = channelModalEl.querySelector('#cm-slug').value.trim();
+  const desc = channelModalEl.querySelector('#cm-desc').value.trim();
+
+  // slug validation
+  let slug = slugRaw;
+  if (slug) {
+    if (!/^[A-Za-z0-9_-]+$/.test(slug)) {
+      alert('Slug can only contain a-z, A-Z, 0-9, dash, underscore.');
+      return null;
+    }
+    const clash = state.channels.find(x =>
+      x.slug === slug && x.id !== state.editingChannelId
+    );
+    if (clash) {
+      alert('Such name already exists.');
+      return null;
+    }
+  }
+  const avatarColor = channelModalEl._getAvatarColor
+    ? channelModalEl._getAvatarColor()
+    : null;
+  const avatarPath = channelModalEl._getAvatarPath
+    ? channelModalEl._getAvatarPath()
+    : null;
+
+  const folderIds = ['all'];
+  channelModalEl.querySelectorAll('#cm-folders input:checked').forEach(i => {
+    if (i.dataset.folderId === 'unfold') return;
+    folderIds.push(i.dataset.folderId);
+  });
+
+  let id;
+  if (state.editingChannelId) {
+    const c = state.channels.find(x => x.id === state.editingChannelId);
+    c.title = title || c.title;
+    c.slug = slug;
+    c.emoji = emoji;
+    c.desc = desc;
+    c.avatarColor = avatarColor;
+    c.avatarPath = avatarPath;
+    c.folderIds = folderIds;
+    id = c.id;
+  } else {
+    id = 'c' + Date.now();
+    state.channels.push({
+      id,
+      title: title || 'Untitled',
+      slug,
+      emoji,
+      desc,
+      avatarColor,
+      avatarPath,
+      folderIds,
+      posts: []
+    });
+  }
+
+  // sync folder.included with the channel's folderIds
+  state.folders.forEach(f => {
+    if (f.isAll || f.isSystem) return;
+    if (!Array.isArray(f.included)) f.included = [];
+    const inFolder = state.channels
+      .filter(ch => ch.folderIds.includes(f.id))
+      .map(ch => ch.id);
+    f.included = inFolder;
+  });
+
+  renderChannels();
+  saveState();
+  return id;
+}
+
+function saveChannelModal(emoji) {
+  const id = saveChannelModalAndGetId(emoji);
+  if (!id) return;
+  closeChannelModal();
+}
+
+/* =========================================================
+   CHANNEL VIEW (posts)
+   ========================================================= */
+const channelViewEl = document.getElementById('channel-view');
+const channelPostsEl = document.getElementById('channel-posts');
+const channelInputEl = document.getElementById('channel-input');
+const channelSendEl = document.getElementById('channel-send');
+const channelBackEl = document.getElementById('channel-back');
+const channelHeaderInfoEl = document.getElementById('channel-header-info');
+const channelHeaderEmojiEl = document.getElementById('channel-header-emoji');
+const channelHeaderTitleEl = document.getElementById('channel-header-title');
+
+// Разрешённые HTML-теги в постах.
+const ALLOWED_TAGS = ['b','i','u','s','code','br','a'];
+
+function sanitizeHtml(text) {
+  // Экранируем всё, кроме разрешённых тегов.
+  // Сначала вытащим разрешённые теги в маркеры, экранируем остальное, вернём.
+  const placeholders = [];
+  let out = String(text);
+
+  // <a href="...">...</a> — отдельно, чтобы не потерять
+  out = out.replace(/<a\s+href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/gi, (m, href, inner) => {
+    const idx = placeholders.length;
+    const safeHref = href.replace(/"/g, '&quot;');
+    const safeInner = inner.replace(/[<>]/g, ''); // внутри ссылки теги не нужны
+    placeholders.push(`<a href="${safeHref}" target="_blank" rel="noopener">${safeInner}</a>`);
+    return `\u0000${idx}\u0000`;
+  });
+
+  // остальные разрешённые теги (без атрибутов)
+  const tagRe = new RegExp(`<\\/?(?:${ALLOWED_TAGS.join('|')})\\s*\\/?>`, 'gi');
+  out = out.replace(tagRe, (m) => {
+    const idx = placeholders.length;
+    placeholders.push(m);
+    return `\u0000${idx}\u0000`;
+  });
+
+  // экранируем всё, что осталось
+  out = escapeHtml(out);
+
+  // возвращаем плейсхолдеры
+  out = out.replace(/\u0000(\d+)\u0000/g, (_, i) => placeholders[+i]);
+  return out;
+}
+
+function linkify(text) {
+  // 1) HTML-санитайз (разрешаем b,i,u,s,code,br,a)
+  let out = sanitizeHtml(text || '');
+
+  // 2) [link] или [link|text] -> кликабельно.
+  //    Внутри скобок можно пробелы и что угодно, кроме ].
+  //    Разделитель | отделяет цель от отображаемого текста.
+  //    Если цель похожа на URL (http/https) — рендерим как обычную ссылку,
+  //    иначе как local-link (открывается через /open).
+  out = out.replace(
+    /\[([^\]\n]+)\]/g,
+    (m, inner) => {
+      let target = inner.trim();
+      let label = target;
+      const pipe = target.indexOf('|');
+      if (pipe !== -1) {
+        label = target.slice(pipe + 1).trim();
+        target = target.slice(0, pipe).trim();
+      }
+      const safeTarget = target.replace(/"/g, '&quot;');
+      const safeLabel = label.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      if (/^https?:\/\//i.test(target)) {
+        return `<a href="${safeTarget}" target="_blank" rel="noopener">${safeLabel}</a>`;
+      }
+      return `<span class="local-link" data-path="${safeTarget}">${safeLabel}</span>`;
+    }
+  );
+
+  // 3) авто-ссылки для http(s) в голом тексте
+  out = out.replace(
+    /(^|[^"'>=])(https?:\/\/[^\s<]+)/g,
+    (m, pre, url) => `${pre}<a href="${url}" target="_blank" rel="noopener">${url}</a>`
+  );
+
+  return out;
+}
+
+function getOpenedChannel() {
+  return state.channels.find(c => c.id === openedChannelId) || null;
+}
+
+function openChannelView(channelId, postNumber, skipPush) {
+  const c = state.channels.find(x => x.id === channelId);
+  if (!c) return;
+  openedChannelId = channelId;
+  editingPostId = null;
+
+  // смотрим верхний черновик
+  const top = topDraft(channelId);
+  if (top) {
+    if (top.kind === 'edit' && top.postId) {
+      // проверяем, что пост ещё существует
+      const exists = (c.posts || []).some(p => p.id === top.postId);
+      if (exists) {
+        editingPostId = top.postId;
+        channelInputEl.value = top.text || '';
+      } else {
+        // пост удалён — снимаем черновик
+        popDraft(channelId);
+        channelInputEl.value = '';
+      }
+    } else {
+      channelInputEl.value = top.text || '';
+    }
+  } else {
+    channelInputEl.value = '';
+  }
+  autoResizeInput();
+  renderChannelView();
+  document.body.classList.add('channel-open');
+  channelViewEl.classList.add('open');
+  if (!skipPush) {
+    const slugOrId = c.slug || c.id;
+    let url = '/c/' + encodeURIComponent(slugOrId);
+    if (postNumber) url += '/p/' + postNumber;
+    pushUrl(url);
+  }
+  if (postNumber) {
+    requestAnimationFrame(() => {
+      const el = channelPostsEl.querySelector('.post[data-post-number="' + postNumber + '"]');
+      if (!el) return;
+      el.scrollIntoView({ block: 'center' });
+      el.classList.add('highlight-post');
+      setTimeout(() => el.classList.remove('highlight-post'), 2000);
+    });
+  }
+}
+
+function closeChannelView() {
+  if (openedChannelId) {
+    const v = channelInputEl.value;
+    if (editingPostId) {
+      // обновляем текст верхнего edit-черновика
+      const s = draftsStack[openedChannelId];
+      const top = s && s[s.length - 1];
+      if (top && top.kind === 'edit' && top.postId === editingPostId) {
+        top.text = v;
+        saveDrafts();
+      } else if (v && v.trim()) {
+        // если по какой-то причине черновика нет — создаём
+        pushDraft(openedChannelId, { kind: 'edit', postId: editingPostId, text: v });
+      }
+    } else {
+      // new-черновик
+      const s = draftsStack[openedChannelId];
+      const top = s && s[s.length - 1];
+      if (top && top.kind === 'new') {
+        top.text = v;
+        if (!v || !v.trim()) {
+          // пустой — удаляем
+          s.pop();
+          if (s.length === 0) delete draftsStack[openedChannelId];
+        }
+        saveDrafts();
+      } else if (v && v.trim()) {
+        pushDraft(openedChannelId, { kind: 'new', text: v });
+      }
+    }
+  }
+  openedChannelId = null;
+  editingPostId = null;
+  channelInputEl.value = '';
+  document.body.classList.remove('channel-open');
+  channelViewEl.classList.remove('open');
+}
+
+function renderChannelView() {
+  const c = getOpenedChannel();
+  if (!c) return;
+
+  if (c.avatarPath) {
+    channelHeaderEmojiEl.innerHTML = `<img src="${escapeAttr(c.avatarPath)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">`;
+    channelHeaderEmojiEl.style.background = 'transparent';
+    channelHeaderEmojiEl.style.color = '';
+  } else {
+    channelHeaderEmojiEl.textContent = c.emoji || '';
+    channelHeaderEmojiEl.style.background = c.avatarColor || '';
+    channelHeaderEmojiEl.style.color = c.avatarColor
+      ? (isLightColor(c.avatarColor) ? '#17212b' : '#fff')
+      : '';
+  }
+  channelHeaderTitleEl.textContent = c.title || 'Channel';
+
+
+  const posts = c.posts || [];
+  channelPostsEl.innerHTML = '';
+  if (posts.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'post-empty';
+    empty.textContent = 'No posts yet.';
+    channelPostsEl.appendChild(empty);
+  } else {
+    posts.forEach(p => {
+      const el = document.createElement('div');
+      el.className = 'post' + (p.id === editingPostId ? ' editing' : '');
+      el.dataset.postId = p.id;
+      el.dataset.postNumber = p.number || '';
+      el.innerHTML = linkify(p.body || '');
+      el.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        showPostContextMenu(e, p.id);
+      });
+      channelPostsEl.appendChild(el);
+    });
+  }
+}
+
+function submitPost() {
+  const c = getOpenedChannel();
+  if (!c) return;
+  const body = channelInputEl.value.trim();
+  if (!body) return;
+
+  if (editingPostId) {
+    // обновляем пост
+    const p = (c.posts || []).find(x => x.id === editingPostId);
+    if (p) p.body = body;
+    // pop edit-черновик
+    popDraft(c.id);
+    editingPostId = null;
+    // показываем следующий черновик (если есть)
+    const top = topDraft(c.id);
+    if (top) {
+      if (top.kind === 'edit' && top.postId) {
+        const exists = (c.posts || []).some(x => x.id === top.postId);
+        if (exists) {
+          editingPostId = top.postId;
+          channelInputEl.value = top.text || '';
+        } else {
+          popDraft(c.id);
+          channelInputEl.value = '';
+        }
+      } else {
+        channelInputEl.value = top.text || '';
+      }
+    } else {
+      channelInputEl.value = '';
+    }
+    autoResizeInput();
+  } else {
+    if (!c.posts) c.posts = [];
+    const maxNum = c.posts.reduce((m, p) => Math.max(m, p.number || 0), 0);
+    c.posts.push({ id: 'p' + Date.now(), number: maxNum + 1, body });
+    // pop new-черновик
+    const s = draftsStack[c.id];
+    if (s && s.length && s[s.length - 1].kind === 'new') {
+      s.pop();
+      if (s.length === 0) delete draftsStack[c.id];
+      saveDrafts();
+    }
+    // показываем следующий
+    const top = topDraft(c.id);
+    if (top) {
+      if (top.kind === 'edit' && top.postId) {
+        const exists = (c.posts || []).some(x => x.id === top.postId);
+        if (exists) {
+          editingPostId = top.postId;
+          channelInputEl.value = top.text || '';
+        } else {
+          popDraft(c.id);
+          channelInputEl.value = '';
+        }
+      } else {
+        channelInputEl.value = top.text || '';
+      }
+    } else {
+      channelInputEl.value = '';
+    }
+    channelInputEl.style.height = '';
+  }
+  renderChannelView();
+  saveState();
+}
+
+function cancelEditing() {
+  if (!openedChannelId) { editingPostId = null; return; }
+  // pop верхний edit-черновик
+  const s = draftsStack[openedChannelId];
+  const top = s && s[s.length - 1];
+  if (top && top.kind === 'edit' && top.postId === editingPostId) {
+    s.pop();
+    if (s.length === 0) delete draftsStack[openedChannelId];
+    saveDrafts();
+  }
+  editingPostId = null;
+  // показываем следующий
+  const next = topDraft(openedChannelId);
+  if (next) {
+    if (next.kind === 'edit' && next.postId) {
+      const c = getOpenedChannel();
+      const exists = c && (c.posts || []).some(x => x.id === next.postId);
+      if (exists) {
+        editingPostId = next.postId;
+        channelInputEl.value = next.text || '';
+      } else {
+        popDraft(openedChannelId);
+        channelInputEl.value = '';
+      }
+    } else {
+      channelInputEl.value = next.text || '';
+    }
+  } else {
+    channelInputEl.value = '';
+  }
+  autoResizeInput();
+  renderChannelView();
+}
+
+function deletePost(postId) {
+  const c = getOpenedChannel();
+  if (!c || !c.posts) return;
+  if (!confirm('Delete this post?')) return;
+  c.posts = c.posts.filter(p => p.id !== postId);
+  // вычищаем все черновики, связанные с этим постом
+  const s = draftsStack[c.id];
+  if (s) {
+    draftsStack[c.id] = s.filter(d => !(d.kind === 'edit' && d.postId === postId));
+    if (draftsStack[c.id].length === 0) delete draftsStack[c.id];
+    saveDrafts();
+  }
+  if (editingPostId === postId) {
+    editingPostId = null;
+    const next = topDraft(c.id);
+    if (next) {
+      if (next.kind === 'edit' && next.postId) {
+        const exists = c.posts.some(x => x.id === next.postId);
+        if (exists) {
+          editingPostId = next.postId;
+          channelInputEl.value = next.text || '';
+        } else { channelInputEl.value = ''; }
+      } else {
+        channelInputEl.value = next.text || '';
+      }
+    } else {
+      channelInputEl.value = '';
+    }
+    autoResizeInput();
+  }
+  renderChannelView();
+  saveState();
+}
+
+function startEditPost(postId) {
+  const c = getOpenedChannel();
+  if (!c || !c.posts) return;
+  const p = c.posts.find(x => x.id === postId);
+  if (!p) return;
+
+  // 1) фиксируем текущий верхний черновик (то, что сейчас в textbox)
+  if (openedChannelId) {
+    const v = channelInputEl.value;
+    const s = draftsStack[openedChannelId];
+    const top = s && s[s.length - 1];
+    if (top) {
+      top.text = v;
+      saveDrafts();
+    } else if (v && v.trim()) {
+      pushDraft(openedChannelId, { kind: 'new', text: v });
+    }
+  }
+
+  // 2) если для этого поста уже есть edit-черновик в стеке — используем его
+  const existingIdx = findEditDraft(c.id, postId);
+  if (existingIdx !== -1) {
+    // переместим его наверх
+    const s = draftsStack[c.id];
+    const [d] = s.splice(existingIdx, 1);
+    s.push(d);
+    saveDrafts();
+    editingPostId = postId;
+    channelInputEl.value = d.text || '';
+  } else {
+    // пушим новый edit-черновик
+    pushDraft(c.id, { kind: 'edit', postId, text: p.body || '' });
+    editingPostId = postId;
+    channelInputEl.value = p.body || '';
+  }
+
+  channelInputEl.focus();
+  autoResizeInput();
+  renderChannelView();
+}
+
+function autoResizeInput() {
+  channelInputEl.style.height = 'auto';
+  channelInputEl.style.height = Math.min(channelInputEl.scrollHeight, 140) + 'px';
+}
+
+// textbox: Enter отправляет, Shift+Enter переносит
+channelInputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    if (editingPostId) cancelEditing();
+    return;
+  }
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    submitPost();
+    return;
+  }
+  // авто-высота
+  setTimeout(autoResizeInput, 0);
+});
+channelInputEl.addEventListener('input', () => {
+  autoResizeInput();
+  if (!openedChannelId) return;
+  const v = channelInputEl.value;
+  if (editingPostId) {
+    // edit-черновик
+    const s = draftsStack[openedChannelId];
+    const top = s && s[s.length - 1];
+    if (top && top.kind === 'edit' && top.postId === editingPostId) {
+      top.text = v;
+      saveDrafts();
+    }
+    return;
+  }
+  // new-черновик
+  const s = draftsStack[openedChannelId];
+  const top = s && s[s.length - 1];
+  if (top && top.kind === 'new') {
+    top.text = v;
+  } else if (v && v.trim()) {
+    pushDraft(openedChannelId, { kind: 'new', text: v });
+  }
+  if (v && v.trim()) {
+    // уже сохранено
+  } else {
+    // пустой new — удаляем
+    const s2 = draftsStack[openedChannelId];
+    const top2 = s2 && s2[s2.length - 1];
+    if (top2 && top2.kind === 'new') {
+      s2.pop();
+      if (s2.length === 0) delete draftsStack[openedChannelId];
+    }
+  }
+  saveDrafts();
+});
+
+// копирование: сохраняем переносы строк.
+// text/plain — сырой body с \n.
+// text/html  — \n заменены на <br>, чтобы Obsidian/Word/Telegram
+//              отобразили переносы при вставке форматированного текста.
+document.addEventListener('copy', (e) => {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed) return;
+
+  const posts = Array.from(document.querySelectorAll('#channel-posts .post'));
+  const selected = posts.filter(p => {
+    try { return sel.containsNode(p, true); } catch (err) { return false; }
+  });
+  if (selected.length === 0) return;
+
+  const cid = openedChannelId;
+  const c = cid ? state.channels.find(x => x.id === cid) : null;
+  if (!c || !c.posts) return;
+
+  const bodies = selected.map(el => {
+    const p = c.posts.find(x => x.id === el.dataset.postId);
+    return p ? (p.body || '') : '';
+  }).filter(Boolean);
+  if (bodies.length === 0) return;
+
+  // plain: сырые тексты через пустую строку
+  const plain = bodies.join('\n\n');
+
+  // html: каждый пост отдельным <div>, \n -> <br>
+  const html = bodies.map(b =>
+    '<div>' + b
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\r\n/g, '<br>')
+      .replace(/\n/g, '<br>')
+      .replace(/\r/g, '<br>')
+    + '</div>'
+  ).join('');
+
+  e.preventDefault();
+  e.clipboardData.setData('text/plain', plain);
+  e.clipboardData.setData('text/html', html);
+}, true);
+
+// делегированный клик по локальным ссылкам внутри постов
+channelPostsEl.addEventListener('click', (e) => {
+  const el = e.target.closest('.local-link');
+  if (!el) return;
+  e.preventDefault();
+  const path = el.dataset.path;
+  if (!path) return;
+  fetch('./open', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path })
+  }).then(async (r) => {
+    if (!r.ok) {
+      const txt = await r.text().catch(() => '');
+      alert('Could not open file.\n\nPath: ' + path +
+            '\nStatus: ' + r.status + '\n' + txt);
+    }
+  }).catch(err => {
+    alert('Server not responding. Is server.py running?\n\n' + err);
+  });
+});
+
+channelSendEl.addEventListener('click', submitPost);
+channelBackEl.addEventListener('click', () => {
+  closeChannelView();
+  renderChannels();
+  pushUrl('/f/' + encodeURIComponent(state.activeFolderId));
+});
+
+// клик по шапке -> bio
+channelHeaderInfoEl.addEventListener('click', () => {
+  const c = getOpenedChannel();
+  if (!c) return;
+  openBio(c);
+});
+
+function openBio(c) {
+  const overlay = document.getElementById('bio-overlay');
+  const bioEmojiEl = overlay.querySelector('.bio-emoji');
+  if (c.avatarPath) {
+    bioEmojiEl.innerHTML = `<img src="${escapeAttr(c.avatarPath)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">`;
+    bioEmojiEl.style.background = 'transparent';
+    bioEmojiEl.style.color = '';
+  } else {
+    bioEmojiEl.textContent = c.emoji || '';
+    bioEmojiEl.style.background = c.avatarColor || '';
+    bioEmojiEl.style.color = c.avatarColor
+      ? (isLightColor(c.avatarColor) ? '#17212b' : '#fff')
+      : '';
+  }
+  overlay.querySelector('.bio-title').textContent = c.title || 'Channel';
+  const descEl = overlay.querySelector('.bio-desc');
+  descEl.innerHTML = c.desc ? linkify(c.desc) : '';
+  descEl.style.display = c.desc ? '' : 'none';
+  // старая ссылка bio-link больше не используется
+  const linkEl = overlay.querySelector('.bio-link');
+  if (linkEl) linkEl.style.display = 'none';
+  // Edit -> открыть Edit Channel поверх
+  const editBtn = overlay.querySelector('.bio-edit');
+  if (editBtn) {
+    editBtn.onclick = () => {
+      overlay.classList.remove('open');
+      openChannelModal(c.id);
+    };
+  }
+  overlay.classList.add('open');
+}
+
+document.getElementById('bio-overlay').addEventListener('click', (e) => {
+  const overlay = document.getElementById('bio-overlay');
+  // local-link внутри bio
+  const ll = e.target.closest('.local-link');
+  if (ll && overlay.contains(ll)) {
+    e.preventDefault();
+    const path = ll.dataset.path;
+    if (path) {
+      fetch('./open', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path })
+      }).catch(() => {});
+    }
+    return;
+  }
+  if (e.target === overlay || e.target.classList.contains('bio-close')) {
+    overlay.classList.remove('open');
+  }
+});
+
+// ПКМ по посту -> мини-меню Edit / Delete
+function showPostContextMenu(e, postId) {
+  ctxMenu.innerHTML = `
+    <div class="ctx-item" data-action="edit-post">Edit</div>
+    <div class="ctx-item" data-action="copy-link">Copy link</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" data-action="delete-post">Delete</div>
+  `;
+  ctxMenu.style.left = e.clientX + 'px';
+  ctxMenu.style.top = e.clientY + 'px';
+  ctxMenu.style.display = 'block';
+
+  ctxMenu.querySelectorAll('.ctx-item').forEach(item => {
+    item.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+      const action = item.dataset.action;
+      hideCtxMenu();
+      if (action === 'edit-post') startEditPost(postId);
+      if (action === 'delete-post') deletePost(postId);
+      if (action === 'copy-link') copyPostLink(postId);
+    });
+  });
+}
+
+/* =========================================================
+   ARCHIVE
+   ========================================================= */
+function archiveChannel(channelId) {
+  const c = state.channels.find(x => x.id === channelId);
+  if (!c) return;
+  c.archived = true;
+  renderSidebar();
+  renderChannels();
+  saveState();
+}
+
+function unarchiveChannel(channelId) {
+  const c = state.channels.find(x => x.id === channelId);
+  if (!c) return;
+  c.archived = false;
+  renderSidebar();
+  renderChannels();
+  saveState();
+}
+
+/* =========================================================
+   REORDER
+   ========================================================= */
+function reorderFolders(srcId, dstId) {
+  const from = state.folders.findIndex(f => f.id === srcId);
+  const to = state.folders.findIndex(f => f.id === dstId);
+  if (from < 0 || to < 0 || from === to) return;
+  const [moved] = state.folders.splice(from, 1);
+  // если тащили вниз (from < to), dst сдвинулся на 1 влево —
+  // вставляем ПОСЛЕ него; если вверх (from > to) — вставляем на его место.
+  const insertAt = from < to ? to : to;
+  state.folders.splice(insertAt, 0, moved);
+  renderSidebar();
+  saveState();
+}
+
+function reorderChannels(srcId, dstId) {
+  const from = state.channels.findIndex(c => c.id === srcId);
+  const to = state.channels.findIndex(c => c.id === dstId);
+  if (from < 0 || to < 0 || from === to) return;
+  const [moved] = state.channels.splice(from, 1);
+  const insertAt = from < to ? to : to;
+  state.channels.splice(insertAt, 0, moved);
+  renderChannels();
+  saveState();
+}
+
+/* =========================================================
+   COPY LINK
+   ========================================================= */
+function copyPostLink(postId) {
+  if (!openedChannelId) return;
+  const c = state.channels.find(x => x.id === openedChannelId);
+  if (!c) return;
+  const p = (c.posts || []).find(x => x.id === postId);
+  if (!p) return;
+  const slugOrId = c.slug || c.id;
+  const url = location.origin + '/c/' + encodeURIComponent(slugOrId) +
+              '/p/' + (p.number || '');
+  navigator.clipboard.writeText(url).then(() => {
+    // тихо
+  }).catch(() => {
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+  });
+}
+
+/* =========================================================
+   UTILS
+   ========================================================= */
+/* Определяем, локальный ли путь.
+   Локальными считаем:
+     - C:\..., D:\..., Z:\... (буква диска Windows)
+     - \\server\share\... (UNC)
+     - /abs/path, ~/path (Unix)
+     - file:///... (уже URL, но оставим как есть)
+   Всё остальное (http, https, t.me, mailto и т.п.) — обычная ссылка. */
+function isLocalPath(link) {
+  if (!link) return false;
+  const s = link.trim();
+  if (/^file:\/\//i.test(s)) return true;
+  if (/^[a-zA-Z]:[\\\/]/.test(s)) return true;       // C:\ or C:/
+  if (/^\\\\/.test(s)) return true;                 // UNC \\server
+  if (s.startsWith('~/') || s.startsWith('/')) return true;  // unix abs/home
+  return false;
+}
+
+function normalizeLocalPath(link) {
+  let s = link.trim();
+  if (/^file:\/\//i.test(s)) {
+    s = decodeURIComponent(s.replace(/^file:\/\/+/i, ''));
+    // file:///C:/... -> C:/...
+  }
+  return s;
+}
+
+// определяем, светлый ли цвет (для читаемого текста на теге)
+function isLightColor(hex) {
+  if (!hex) return false;
+  const c = hex.replace('#', '');
+  if (c.length !== 6) return false;
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
+  // YIQ — стандартная формула читаемости
+  const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+  return yiq >= 150;
+}
+
+// Сжатие изображения до квадрата size×size (центр-кроп), возвращает data URL JPEG.
+function compressImageToDataUrl(file, size, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('read failed'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('image load failed'));
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // центр-кроп
+        const sw = img.naturalWidth;
+        const sh = img.naturalHeight;
+        const side = Math.min(sw, sh);
+        const sx = (sw - side) / 2;
+        const sy = (sh - side) / 2;
+
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+        try {
+          resolve(canvas.toDataURL('image/jpeg', quality || 0.85));
+        } catch (e) {
+          reject(e);
+        }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[m]));
+}
+function escapeAttr(s) { return escapeHtml(s); }
+
+/* =========================================================
+   INIT
+   ========================================================= */
+(async function init() {
+  await loadState();
+  parseLocation();
+})();
+
+folderModalOverlay.addEventListener('click', e => {
+  if (e.target === folderModalOverlay) closeFolderModal();
+});
+channelModalOverlay.addEventListener('click', e => {
+  if (e.target === channelModalOverlay) closeChannelModal();
+});
+
+/* =========================================================
+   KEYBOARD: Esc closes modal, then channel view.
+   Enter saves (everywhere). Shift+Enter = newline in textarea.
+   ========================================================= */
+// Esc на экране канала -> закрыть (как Back). Не срабатывает,
+// если открыта модалка (там Esc закроет модалку).
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const folderOpen = folderModalOverlay.classList.contains('open');
+  const channelModalOpen = channelModalOverlay.classList.contains('open');
+  if (folderOpen || channelModalOpen) return;
+  // не мешаем Esc внутри input/textarea на экране канала —
+  // но там Esc отменяет edit поста (свой обработчик). Проверим:
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea') return;
+  if (!openedChannelId) return;
+  e.preventDefault();
+  closeChannelView();
+  renderChannels();
+  pushUrl('/f/' + encodeURIComponent(state.activeFolderId));
+});
+
+document.addEventListener('keydown', (e) => {
+  const folderOpen = folderModalOverlay.classList.contains('open');
+  const channelOpen = channelModalOverlay.classList.contains('open');
+  if (!folderOpen && !channelOpen) return;
+
+  // Esc -> close whichever is open
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    if (folderOpen) closeFolderModal();
+    if (channelOpen) closeChannelModal();
+    return;
+  }
+
+  if (e.key !== 'Enter') return;
+
+  const tag = (e.target.tagName || '').toLowerCase();
+  const isTextarea = tag === 'textarea';
+  const withShift = e.shiftKey;
+
+  // Shift+Enter in a textarea -> insert newline (browser default).
+  if (isTextarea && withShift) return;
+
+  // Otherwise: Enter saves (including inside textarea).
+  e.preventDefault();
+  if (folderOpen) {
+    const btn = folderModalEl.querySelector('#fm-save');
+    if (btn) btn.click();
+  } else if (channelOpen) {
+    const btn = channelModalEl.querySelector('#cm-save');
+    if (btn) btn.click();
+  }
+});
+</script>
+</body>
+</html>
