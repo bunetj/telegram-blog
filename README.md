@@ -1,4 +1,4 @@
 # telegram-blog
 use fake telegram channels for your personal notes
 
-![](tgc2.mp4)
+<video src="tgc2.mp4"></video>
