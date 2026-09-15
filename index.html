@@ -4,25 +4,61 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <base href="/">
-<title>Fake Telegram Subscriptions</title>
+<title>Fake Telegram Channels</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
+
+  :root {
+    /* ==== Telegram Web K dark-theme tokens ==== */
+    --surface-color: #17212b;
+    --surface-color-2: #0e1621;
+    --surface-color-3: #1c2733;
+    --border-color: #0d1520;
+    --primary-color: #5288c1;
+    --primary-color-rgb: 82, 136, 193;
+    --dark-primary-color: #477bb0;
+    --light-primary-color: rgba(82, 136, 193, .12);
+    --secondary-color: #708499;
+    --secondary-text-color: #708499;
+    --primary-text-color: #ffffff;
+    --message-background-color: #1e2c3a;
+    --message-out-background-color: #2b5278;
+    --message-highlighting-color: rgba(82, 136, 193, .3);
+    --menu-background-color: #1c2733;
+    --menu-box-shadow: 0 4px 16px rgba(0,0,0,.5);
+    --danger-color: #e57373;
+
+    --messages-text-size: 14px;
+    --messages-time-text-size: 12px;
+    --messages-secondary-text-size: 14px;
+    --messages-line-height: 21px;
+
+    --bubble-border-radius-big: 12px;
+    --bubble-margin: 2px;
+
+    --chat-input-border-radius: 12px;
+
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background: #17212b;   /* telegram dark bg */
-    color: #e1e1e1;
+    font-family: var(--font-family);
+    background: var(--surface-color);
+    color: var(--primary-text-color);
     display: flex;
     height: 100vh;
     overflow: hidden;
     font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   /* ============ SIDEBAR ============ */
   #sidebar {
     width: 80px;
-    background: #0e1621;   /* darker telegram sidebar */
-    border-right: 1px solid #101921;
+    background: var(--surface-color-2);
+    border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -45,19 +81,14 @@
     cursor: pointer;
     user-select: none;
     border-radius: 6px;
+    transition: background-color .15s ease;
   }
-  .folder-item:hover { background: #17212b; }
-  .folder-item.add-folder .folder-icon {
-    color: #5a9fd4;
-    font-weight: 300;
-  }
-  .folder-item.add-folder .folder-label {
-    color: #5a9fd4;
-  }
-  .folder-item.active { background: #2b3a4a; }
-
+  .folder-item:hover { background: rgba(255,255,255,.05); }
+  .folder-item.add-folder .folder-icon { color: var(--primary-color); font-weight: 300; }
+  .folder-item.add-folder .folder-label { color: var(--primary-color); }
+  .folder-item.active { background: rgba(82,136,193,.15); }
   .folder-item.dragging { opacity: 0.4; }
-  .folder-item.drag-over { outline: 2px dashed #5a9fd4; outline-offset: -2px; }
+  .folder-item.drag-over { outline: 2px dashed var(--primary-color); outline-offset: -2px; }
 
   .folder-icon {
     font-size: 18px;
@@ -74,7 +105,7 @@
     line-height: 1.15;
     text-align: center;
     margin-top: 3px;
-    color: #7d8b99;
+    color: var(--secondary-text-color);
     word-break: break-word;
     width: 100%;
     padding: 0 2px;
@@ -88,22 +119,22 @@
     flex-direction: column;
     overflow: hidden;
     min-width: 0;
-    background: #17212b;
+    background: var(--surface-color);
   }
-
   #main-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 16px;
-    border-bottom: 1px solid #101921;
+    height: 56px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
-    background: #17212b;
+    background: var(--surface-color);
   }
   #main-title {
     font-size: 16px;
-    font-weight: 600;
-    color: #fff;
+    font-weight: 500;
+    color: var(--primary-text-color);
   }
   #channels-list {
     flex: 1;
@@ -113,7 +144,6 @@
   #channels-list::-webkit-scrollbar { width: 8px; }
   #channels-list::-webkit-scrollbar-thumb { background: #2b3a4a; border-radius: 4px; }
 
-  /* channel row is an <a> so hover shows link in browser status bar */
   .channel-row {
     display: flex;
     align-items: center;
@@ -122,9 +152,10 @@
     cursor: pointer;
     text-decoration: none;
     color: inherit;
+    position: relative;
+    transition: background-color .15s ease;
   }
-  .channel-row:hover { background: #202b36; }
-  .channel-row { position: relative; }
+  .channel-row:hover { background: rgba(255,255,255,.04); }
   .channel-row .archive-btn {
     position: absolute;
     right: 0;
@@ -139,59 +170,47 @@
     user-select: none;
     background: transparent;
     opacity: 0;
+    transition: opacity .15s ease, background-color .15s ease;
   }
-  .channel-row .archive-btn:hover {
-    background: #2b3a4a;
-    opacity: 1;
-  }
+  .channel-row .archive-btn:hover { background: rgba(255,255,255,.06); opacity: 1; }
   .channel-row.dragging { opacity: 0.4; }
-  .channel-row.drag-over { outline: 2px dashed #5a9fd4; outline-offset: -2px; }
+  .channel-row.drag-over { outline: 2px dashed var(--primary-color); outline-offset: -2px; }
   .channel-row-new .channel-avatar {
-    color: #5a9fd4;
+    color: var(--primary-color);
     font-weight: 300;
-    background: #1e2b38;
+    background: rgba(82,136,193,.12);
   }
 
   .channel-avatar {
-    width: 46px;
-    height: 46px;
+    width: 54px;
+    height: 54px;
     border-radius: 50%;
     background: #2b3a4a;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 18px;
+    font-size: 20px;
     flex-shrink: 0;
     overflow: hidden;
   }
-
-  .channel-info {
-    flex: 1;
-    min-width: 0;
-  }
-  .channel-title-line {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
+  .channel-info { flex: 1; min-width: 0; }
+  .channel-title-line { display: flex; align-items: center; gap: 6px; }
   .channel-title {
     font-size: 14px;
     font-weight: 500;
-    color: #fff;
+    color: var(--primary-text-color);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
   .channel-desc {
-    font-size: 12px;
-    color: #7d8b99;
+    font-size: 13px;
+    color: var(--secondary-text-color);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     margin-top: 2px;
   }
-
-  /* folder tag shown in chat list */
   .folder-tag {
     font-size: 10px;
     padding: 1px 6px;
@@ -200,21 +219,19 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
-  .folder-tag.light {
-    color: #17212b;
-  }
+  .folder-tag.light { color: #17212b; }
 
   /* ============ CONTEXT MENU ============ */
   #ctx-menu {
     position: fixed;
-    background: #1c2733;
+    background: var(--menu-background-color);
     border: 1px solid #2b3a4a;
     border-radius: 8px;
     padding: 6px 0;
     min-width: 190px;
     z-index: 1000;
     display: none;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    box-shadow: var(--menu-box-shadow);
   }
   #ctx-menu .ctx-item {
     padding: 8px 14px;
@@ -224,11 +241,7 @@
     white-space: nowrap;
   }
   #ctx-menu .ctx-item:hover { background: #2b3a4a; }
-  #ctx-menu .ctx-sep {
-    height: 1px;
-    background: #2b3a4a;
-    margin: 4px 0;
-  }
+  #ctx-menu .ctx-sep { height: 1px; background: #2b3a4a; margin: 4px 0; }
 
   /* ============ MODAL ============ */
   .modal-overlay {
@@ -241,9 +254,8 @@
     z-index: 2000;
   }
   .modal-overlay.open { display: flex; }
-
   .modal {
-    background: #1c2733;
+    background: var(--menu-background-color);
     border: 1px solid #2b3a4a;
     border-radius: 10px;
     width: 440px;
@@ -253,44 +265,24 @@
     padding: 18px;
     color: #d4d4d4;
   }
-  .modal h3 {
-    font-size: 16px;
-    color: #fff;
-    margin-bottom: 14px;
-  }
-  .modal label {
-    display: block;
-    font-size: 12px;
-    color: #7d8b99;
-    margin: 12px 0 4px;
-  }
+  .modal h3 { font-size: 16px; color: #fff; margin-bottom: 14px; }
+  .modal label { display: block; font-size: 12px; color: var(--secondary-text-color); margin: 12px 0 4px; }
   .modal input[type="text"],
   .modal textarea {
     width: 100%;
-    background: #17212b;
+    background: var(--surface-color);
     border: 1px solid #2b3a4a;
     border-radius: 6px;
-    color: #e1e1e1;
+    color: var(--primary-text-color);
     padding: 8px 10px;
     font-size: 13px;
     font-family: inherit;
     resize: vertical;
   }
   .modal input[type="text"]:focus,
-  .modal textarea:focus { outline: none; border-color: #5a9fd4; }
-
-  .modal .hint {
-    font-size: 11px;
-    color: #5a6b7a;
-    margin-top: 4px;
-  }
-
-  .modal .row-btns {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 18px;
-  }
+  .modal textarea:focus { outline: none; border-color: var(--primary-color); }
+  .modal .hint { font-size: 11px; color: #5a6b7a; margin-top: 4px; }
+  .modal .row-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
   .modal button {
     padding: 8px 16px;
     border-radius: 6px;
@@ -300,35 +292,24 @@
     font-size: 13px;
     cursor: pointer;
     font-family: inherit;
+    transition: background-color .15s ease;
   }
   .modal button:hover { background: #3a4d61; }
-  .modal button.primary { background: #5a9fd4; border-color: #5a9fd4; color: #fff; }
-  .modal button.primary:hover { background: #4a8fc4; }
+  .modal button.primary { background: var(--primary-color); border-color: var(--primary-color); color: #fff; }
+  .modal button.primary:hover { background: var(--dark-primary-color); }
   .modal button.link-btn {
     background: transparent;
     border: none;
-    color: #5a9fd4;
+    color: var(--primary-color);
     padding: 4px 0;
     font-size: 12px;
     cursor: pointer;
   }
   .modal button.link-btn:hover { text-decoration: underline; background: transparent; }
-  .modal button.danger {
-    background: transparent;
-    border-color: #e57373;
-    color: #e57373;
-  }
-  .modal button.danger:hover {
-    background: #e57373;
-    color: #fff;
-  }
+  .modal button.danger { background: transparent; border-color: var(--danger-color); color: var(--danger-color); }
+  .modal button.danger:hover { background: var(--danger-color); color: #fff; }
 
-  /* аватарка в Edit Channel */
-  .avatar-edit {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
+  .avatar-edit { display: flex; align-items: center; gap: 14px; }
   .avatar-edit .avatar-preview {
     position: relative;
     width: 64px;
@@ -356,45 +337,35 @@
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: #5a9fd4;
+    background: var(--primary-color);
     color: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 13px;
     cursor: pointer;
-    border: 2px solid #1c2733;
+    border: 2px solid var(--menu-background-color);
     user-select: none;
   }
-  .avatar-edit .avatar-upload-btn:hover { background: #4a8fc4; }
+  .avatar-edit .avatar-upload-btn:hover { background: var(--dark-primary-color); }
 
-  .emoji-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin-top: 4px;
-  }
-  .emoji-grid span {
-    font-size: 22px;
-    cursor: pointer;
-    padding: 2px 5px;
-    border-radius: 4px;
-  }
+  .emoji-grid { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+  .emoji-grid span { font-size: 22px; cursor: pointer; padding: 2px 5px; border-radius: 4px; }
   .emoji-grid span:hover { background: #2b3a4a; }
-  .emoji-grid span.selected { background: #5a9fd4; }
+  .emoji-grid span.selected { background: var(--primary-color); }
 
   #fm-search {
     width: 100%;
-    background: #17212b;
+    background: var(--surface-color);
     border: 1px solid #2b3a4a;
     border-radius: 6px;
-    color: #e1e1e1;
+    color: var(--primary-text-color);
     padding: 6px 10px;
     font-size: 12px;
     font-family: inherit;
     margin-bottom: 4px;
   }
-  #fm-search:focus { outline: none; border-color: #5a9fd4; }
+  #fm-search:focus { outline: none; border-color: var(--primary-color); }
 
   .check-list {
     height: 130px;
@@ -402,7 +373,7 @@
     border: 1px solid #2b3a4a;
     border-radius: 6px;
     padding: 4px;
-    background: #17212b;
+    background: var(--surface-color);
   }
   .check-list label {
     display: flex;
@@ -416,14 +387,9 @@
     border-radius: 4px;
   }
   .check-list label:hover { background: #202b36; }
-  .check-list input { accent-color: #5a9fd4; }
+  .check-list input { accent-color: var(--primary-color); }
 
-  .color-row {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-top: 4px;
-  }
+  .color-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
   .color-swatch {
     width: 24px;
     height: 24px;
@@ -439,7 +405,7 @@
     align-items: center;
     justify-content: center;
     font-size: 11px;
-    color: #7d8b99;
+    color: var(--secondary-text-color);
     width: auto;
     border-radius: 12px;
     padding: 0 8px;
@@ -448,12 +414,7 @@
   .color-swatch.no-tag.selected { border-color: #fff; border-style: solid; }
 
   /* ============ CHANNEL VIEW ============ */
-  #channel-view {
-    display: none;
-    flex-direction: column;
-    height: 100%;
-    min-height: 0;
-  }
+  #channel-view { display: none; flex-direction: column; height: 100%; min-height: 0; }
   #channel-view.open { display: flex; }
   body.channel-open #channels-list { display: none; }
   body.channel-open #main-header { display: none; }
@@ -461,22 +422,24 @@
   #channel-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 16px;
-    border-bottom: 1px solid #101921;
+    gap: 14px;
+    height: 56px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
-    background: #17212b;
+    background: var(--surface-color);
   }
   #channel-back {
     background: transparent;
     border: none;
-    color: #5a9fd4;
+    color: var(--primary-color);
     font-size: 20px;
     cursor: pointer;
     padding: 4px 8px;
     border-radius: 6px;
+    transition: background-color .15s ease;
   }
-  #channel-back:hover { background: #202b36; }
+  #channel-back:hover { background: rgba(255,255,255,.05); }
   #channel-header-info {
     display: flex;
     align-items: center;
@@ -488,20 +451,20 @@
     min-width: 0;
   }
   #channel-header-emoji {
-    width: 34px;
-    height: 34px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
     background: #2b3a4a;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
+    font-size: 18px;
     flex-shrink: 0;
   }
   #channel-header-title {
     font-size: 15px;
     font-weight: 600;
-    color: #fff;
+    color: var(--primary-text-color);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -513,34 +476,57 @@
     padding: 10px 16px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     min-height: 0;
-    background: #101921;
+    background: var(--border-color);
   }
   #channel-posts::-webkit-scrollbar { width: 8px; }
   #channel-posts::-webkit-scrollbar-thumb { background: #2b3a4a; border-radius: 4px; }
 
+  /* ==== MESSAGE BUBBLE (tweb-accurate, incoming-only) ==== */
   .post {
-    background: #1c2733;
-    border: 1px solid #2b3a4a;
-    border-radius: 8px;
-    padding: 8px 12px;
-    font-size: 13px;
-    color: #e1e1e1;
+    position: relative;
+    background: var(--message-background-color);
+    border-radius: var(--bubble-border-radius-big);
+    padding: 8px 9px;
+    font-size: var(--messages-text-size);
+    line-height: var(--messages-line-height);
+    color: var(--primary-text-color);
     white-space: pre-wrap;
     word-wrap: break-word;
-    max-width: 70%;
+    max-width: min(480px, 85%);
     align-self: flex-start;
+    box-shadow: 0 2px 6px 0 rgba(0, 0, 0, .35), 0 0 0 1px rgba(255, 255, 255, .04);
+    margin-bottom: 0;
   }
   .post a { color: #5a9fd4; text-decoration: none; }
   .post a:hover { text-decoration: underline; }
-  .post .local-link {
-    color: #5a9fd4;
-    cursor: pointer;
-  }
+  .post .local-link { color: #5a9fd4; cursor: pointer; }
   .post .local-link:hover { text-decoration: underline; }
-  .post.editing { outline: 1px solid #5a9fd4; }
-  .post.highlight-post { outline: 2px solid #5a9fd4; background: #24323f; }
+  .post.editing { outline: 1px solid var(--primary-color); }
+  .post.highlight-post {
+    outline: 2px solid var(--primary-color);
+    background: #24323f;
+  }
+
+  /* Tail — real tweb SVG shape, incoming (left side) */
+  .post.can-have-tail {
+    border-bottom-left-radius: 0;
+    margin-bottom: 16px;
+  }
+  .post.can-have-tail::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: -8.4px;
+    width: 11px;
+    height: 20px;
+    z-index: -1;
+    background: var(--message-background-color);
+    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 20'><path d='M11 0v20H0c2.5-2 5.5-5.5 7-9 1.2-2.8 2-6 4-11z'/></svg>") no-repeat;
+            mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 11 20'><path d='M11 0v20H0c2.5-2 5.5-5.5 7-9 1.2-2.8 2-6 4-11z'/></svg>") no-repeat;
+    transform: translateY(1px);
+  }
 
   .post-empty {
     color: #5a6b7a;
@@ -553,38 +539,48 @@
     display: flex;
     align-items: flex-end;
     gap: 8px;
-    padding: 10px 16px;
-    border-top: 1px solid #101921;
-    background: #17212b;
+    padding: 8px 16px 12px;
+    border-top: 1px solid var(--border-color);
+    background: var(--surface-color);
     flex-shrink: 0;
   }
   #channel-input {
     flex: 1;
-    background: #1c2733;
+    background: var(--surface-color-3);
     border: 1px solid #2b3a4a;
-    border-radius: 8px;
-    color: #e1e1e1;
-    padding: 8px 10px;
-    font-size: 13px;
+    border-radius: var(--chat-input-border-radius);
+    color: var(--primary-text-color);
+    padding: 9px 12px;
+    font-size: var(--messages-text-size);
     font-family: inherit;
     resize: none;
-    min-height: 36px;
+    min-height: 42px;
     max-height: 140px;
+    line-height: var(--messages-line-height);
   }
-  #channel-input:focus { outline: none; border-color: #5a9fd4; }
+  #channel-input:focus { outline: none; border-color: var(--primary-color); }
+  #channel-input::placeholder { color: var(--secondary-text-color); }
   #channel-send {
-    background: #5a9fd4;
+    background: var(--primary-color);
     border: none;
     color: #fff;
-    border-radius: 8px;
-    padding: 8px 14px;
-    font-size: 13px;
+    border-radius: 50%;
+    width: 42px;
+    height: 42px;
+    font-size: 18px;
     cursor: pointer;
     font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color .15s ease;
+    flex-shrink: 0;
+    line-height: 1;
+    padding: 0;
   }
-  #channel-send:hover { background: #4a8fc4; }
+  #channel-send:hover { background: var(--dark-primary-color); }
 
-  /* bio modal */
+  /* ============ BIO MODAL ============ */
   #bio-overlay {
     position: fixed;
     inset: 0;
@@ -596,7 +592,7 @@
   }
   #bio-overlay.open { display: flex; }
   #bio-box {
-    background: #1c2733;
+    background: var(--menu-background-color);
     border: 1px solid #2b3a4a;
     border-radius: 10px;
     padding: 20px;
@@ -628,15 +624,9 @@
     white-space: pre-wrap;
     margin-bottom: 12px;
   }
-  #bio-box .bio-desc a {
-    color: #5a9fd4;
-    text-decoration: none;
-  }
+  #bio-box .bio-desc a { color: #5a9fd4; text-decoration: none; }
   #bio-box .bio-desc a:hover { text-decoration: underline; }
-  #bio-box .bio-desc .local-link {
-    color: #5a9fd4;
-    cursor: pointer;
-  }
+  #bio-box .bio-desc .local-link { color: #5a9fd4; cursor: pointer; }
   #bio-box .bio-desc .local-link:hover { text-decoration: underline; }
   #bio-box .bio-link {
     display: inline-block;
@@ -671,6 +661,7 @@
 <main id="main">
   <div id="main-header">
     <div id="main-title">All chats</div>
+    <button id="export-md-btn" title="Export as .md" style="background:transparent;border:1px solid #2b3a4a;color:#5a9fd4;padding:4px 10px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:12px;">Export MD</button>
   </div>
   <div id="channels-list"></div>
 
@@ -685,7 +676,7 @@
     <div id="channel-posts"></div>
     <div id="channel-input-row">
       <textarea id="channel-input" rows="1" placeholder="Message"></textarea>
-      <button id="channel-send">Send</button>
+      <button id="channel-send" title="Send">➤</button>
     </div>
   </div>
 </main>
@@ -744,7 +735,7 @@ let editingPostId = null;
 // верхний элемент стека — то, что в textbox.
 let draftsStack = (() => {
   try {
-    const raw = localStorage.getItem('subscriptions_drafts_v2');
+    const raw = localStorage.getItem('channels_drafts_v2');
     const parsed = raw ? JSON.parse(raw) : null;
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
     return parsed;
@@ -753,7 +744,7 @@ let draftsStack = (() => {
 
 function saveDrafts() {
   try {
-    localStorage.setItem('subscriptions_drafts_v2', JSON.stringify(draftsStack));
+    localStorage.setItem('channels_drafts_v2', JSON.stringify(draftsStack));
   } catch (e) {}
 }
 
@@ -865,44 +856,452 @@ const mainTitleEl = document.getElementById('main-title');
 const channelsListEl = document.getElementById('channels-list');
 
 /* =========================================================
-   PERSISTENCE
-   ========================================================= */
-const STORAGE_KEY = 'subscriptions_state_v1';
-const DRAFTS_KEY = 'subscriptions_drafts_v1';
+   FILE-DRIVEN STORAGE (data/)
 
-async function loadState() {
-  // 1) пробуем data.json с сервера
-  try {
-    const r = await fetch('./data.json', { cache: 'no-store' });
-    if (r.ok) {
-      const data = await r.json();
-      if (data && data.folders && data.channels) {
-        state = Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATE)), data);
-        ensureSystemFolders();
-        ensurePostNumbers();
-        return;
-      }
+   Layout on disk:
+     data/folders.md          -> YAML list of user folders
+     data/<folder-name>/<ch>/ -> meta.md + N.md posts
+     data/_unfolderized/<ch>/ -> same, not in any user folder
+     data/_archived/<ch>/     -> same, but archived
+
+   folder -> directory: the folder's *name* from folders.md is the dir name.
+   channel metadata comes from meta.md (YAML frontmatter):
+     id, title, slug, emoji, avatarColor, avatar, folderIds (list)
+   ========================================================= */
+
+// ---------- tiny IO helpers ----------
+async function __dataListDir(rel) {
+  const r = await fetch('/data/' + rel, { cache: 'no-store' });
+  if (!r.ok) throw new Error('list ' + rel + ' -> ' + r.status);
+  return r.json();
+}
+async function __dataReadText(rel) {
+  const r = await fetch('/data/' + rel, { cache: 'no-store' });
+  if (!r.ok) throw new Error('read ' + rel + ' -> ' + r.status);
+  return r.text();
+}
+async function __dataWriteText(rel, text) {
+  const r = await fetch('/data/' + rel, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    body: text
+  });
+  if (!r.ok) throw new Error('write ' + rel + ' -> ' + r.status);
+}
+async function __dataWriteEmpty(relDir) {
+  const r = await fetch('/data/' + relDir, { method: 'POST', body: '' });
+  if (!r.ok) throw new Error('mkdir ' + relDir + ' -> ' + r.status);
+}
+async function __dataDelete(rel) {
+  const r = await fetch('/data/' + rel, { method: 'DELETE' });
+  if (!r.ok) throw new Error('delete ' + rel + ' -> ' + r.status);
+}
+
+// ---------- YAML helpers ----------
+function __stripYamlQuotes(s) {
+  s = String(s == null ? "" : s).trim();
+  if ((s.startsWith('"') && s.endsWith('"')) ||
+      (s.startsWith("'") && s.endsWith("'"))) {
+    return s.slice(1, -1);
+  }
+  return s;
+}
+function __yamlQuote(s) {
+  s = String(s == null ? "" : s);
+  if (s === "") return '""';
+  if (/[:#\-\{\}\[\],&*?|<>=!%@`"'\n]/.test(s) || /^\s|\s$/.test(s)) {
+    return '"' + s.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+  }
+  return s;
+}
+
+// ---------- folders.md ----------
+// YAML frontmatter with a list of objects:
+//   ---
+//   folders:
+//     - id: f123
+//       name: singers
+//       icon: "🎤🎵"
+//     - id: f456
+//       name: фрики
+//       icon: "🤡"
+//   ---
+function __parseFoldersMd(text) {
+  const out = [];
+  if (!text) return out;
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  let cur = null;
+  const flush = () => {
+    if (cur && cur.id) {
+      out.push({
+        id: cur.id,
+        name: cur.name || cur.id,
+        icon: cur.icon || "📁",
+        color: cur.color || null
+      });
     }
+    cur = null;
+  };
+  for (const raw of lines) {
+    const line = raw.replace(/\t/g, "    ").trim();
+    if (!line || line.startsWith("#") || line === "---") continue;
+    // "- id: value" starts a folder object
+    let m = line.match(/^-\s+id\s*:\s*(.*)$/);
+    if (m) { flush(); cur = { id: __stripYamlQuotes(m[1]) }; continue; }
+    if (!cur) continue;
+    // other keys inside the object
+    m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$/);
+    if (!m) continue;
+    const k = m[1];
+    const v = __stripYamlQuotes(m[2]);
+    if (k === "name") cur.name = v;
+    else if (k === "icon") cur.icon = v;
+    else if (k === "color") cur.color = v || null;
+  }
+  flush();
+  const SYSTEM = new Set(["all", "archived", "unfold"]);
+  return out.filter(f => !SYSTEM.has(f.id));
+}
+
+function __serializeFoldersMd(folders) {
+  const user = folders.filter(f => !f.isAll && !f.isSystem);
+  const out = ["---", "folders:"];
+  for (const f of user) {
+    out.push("  - id: " + __yamlQuote(f.id));
+    out.push("    name: " + __yamlQuote(f.name || f.id));
+    out.push("    icon: " + __yamlQuote(f.icon || "📁"));
+    if (f.color) out.push("    color: " + __yamlQuote(f.color));
+  }
+  out.push("---");
+  return out.join("\n") + "\n";
+}
+
+// ---------- meta.md (per channel) ----------
+//   ---
+//   id: c123
+//   title: steven morrissey
+//   slug: morrissey
+//   emoji: 👻
+//   avatarColor: "#1b7be7"
+//   avatar: media/avatars/c123.jpg
+//   folderIds:
+//     - all
+//     - f1789060012049
+//     - archived
+//   ---
+function __parseChannelMeta(text, fallbackTitle) {
+  const meta = {
+    id: "", title: fallbackTitle || "", slug: "", emoji: "",
+    desc: "", avatarColor: "", avatar: "", folderIds: null
+  };
+  if (!text) return meta;
+  const lines = text.replace(/\r\n/g, "\n").split("\n");
+  let i = 0;
+  while (i < lines.length && lines[i].trim() === "") i++;
+  if (lines[i] && lines[i].trim() === "---") i++;
+  let currentListKey = null;
+  for (; i < lines.length; i++) {
+    const raw = lines[i];
+    if (raw.trim() === "---") { i++; break; }
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+
+    const lm = line.match(/^-\s+(.*)$/);
+    if (lm && currentListKey) {
+      meta[currentListKey].push(__stripYamlQuotes(lm[1]));
+      continue;
+    }
+    const m = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.*)$/);
+    if (!m) continue;
+    const k = m[1];
+    const v = __stripYamlQuotes(m[2]);
+    if (v === "") {
+      meta[k] = [];
+      currentListKey = k;
+      continue;
+    }
+    currentListKey = null;
+    if (k === "title" || k === "slug" || k === "emoji" || k === "desc" ||
+        k === "color" || k === "avatar" || k === "id" || k === "avatarColor") {
+      meta[k] = v;
+    }
+  }
+  if (!meta.desc && i < lines.length) {
+    meta.desc = lines.slice(i).join("\n").trim();
+  }
+  if (!meta.avatarColor && meta.color) meta.avatarColor = meta.color;
+  return meta;
+}
+
+function __serializeChannelMeta(ch) {
+  const out = ["---"];
+  if (ch.mdId) out.push("id: " + __yamlQuote(ch.mdId));
+  if (ch.title) out.push("title: " + __yamlQuote(ch.title));
+  if (ch.slug) out.push("slug: " + __yamlQuote(ch.slug));
+  if (ch.emoji) out.push("emoji: " + __yamlQuote(ch.emoji));
+  if (ch.avatarColor) out.push("avatarColor: " + __yamlQuote(ch.avatarColor));
+  if (ch.avatarPath) out.push("avatar: " + __yamlQuote(ch.avatarPath));
+  if (Array.isArray(ch.folderIds) && ch.folderIds.length) {
+    out.push("folderIds:");
+    ch.folderIds.forEach(fid => out.push("  - " + __yamlQuote(fid)));
+  }
+  out.push("---");
+  if (ch.desc) out.push(ch.desc);
+  return out.join("\n") + "\n";
+}
+
+// ---------- slug ----------
+function __slugify(s) {
+  return String(s || "").toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "_")
+    .replace(/^_+|_+$/g, "") || "channel";
+}
+
+// ---------- load ----------
+async function loadState() {
+  const sysFolders = [
+    { id: "all", name: "", icon: "📁", isAll: true, included: "all", excluded: [], color: null },
+    { id: "archived", name: "Archived", icon: "📦", isSystem: true, isArchived: true, included: [], excluded: [], color: null },
+    { id: "unfold", name: "Unfolderized", icon: "📭", isSystem: true, included: [], excluded: [], color: null }
+  ];
+
+  // ---- try single-request bundle first ----
+  let bundle = null;
+  const __t0 = performance.now();
+  try {
+    const r = await fetch("/data-bundle", { cache: "no-store" });
+    if (r.ok) bundle = await r.json();
   } catch (e) {
-    // сервер не запущен / файла нет — не страшно
+    console.warn("[load] /data-bundle failed, using fallback:", e);
   }
 
-  // 2) fallback: localStorage
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const data = JSON.parse(raw);
-      if (data && data.folders && data.channels) {
-        state = Object.assign(JSON.parse(JSON.stringify(DEFAULT_STATE)), data);
-        ensureSystemFolders();
-        ensurePostNumbers();
-        return;
+  if (bundle) {
+    const foldersMdText = bundle.foldersMd || "";
+    const rawChannels = bundle.channels || [];
+    const userFoldersB = __parseFoldersMd(foldersMdText);
+    state.folders = sysFolders.slice(0, 3).concat(userFoldersB);
+
+    const idByNameB = {};
+    userFoldersB.forEach(f => { idByNameB[f.name || f.id] = f.id; });
+
+    const channelsB = rawChannels.map(rc => {
+      const folderPath = rc.folderPath || "";
+      const meta = __parseChannelMeta(rc.meta || "", rc.name);
+      const posts = (rc.posts || []).map(p => ({
+        id: "p" + p.number, number: p.number, body: p.body
+      }));
+      let folderIds;
+      if (Array.isArray(meta.folderIds) && meta.folderIds.length) {
+        folderIds = meta.folderIds.slice();
+      } else {
+        folderIds = ["all"];
+        if (folderPath === "_archived") folderIds.push("archived");
+        else if (folderPath && folderPath !== "_unfolderized") {
+          const fid = idByNameB[folderPath];
+          if (fid) folderIds.push(fid);
+        }
       }
+      return {
+        id: meta.id || meta.slug || __slugify(rc.name),
+        mdId: meta.id || "",
+        title: meta.title || rc.name,
+        slug: meta.slug || "",
+        emoji: meta.emoji || "",
+        desc: meta.desc || "",
+        avatarColor: meta.avatarColor || null,
+        avatarPath: meta.avatar || null,
+        folderIds,
+        posts
+      };
+    });
+
+    // dedupe by id
+    const seenB = new Map();
+    for (const ch of channelsB) {
+      const ex = seenB.get(ch.id);
+      if (!ex) seenB.set(ch.id, ch);
+      else for (const fid of ch.folderIds)
+        if (!ex.folderIds.includes(fid)) ex.folderIds.push(fid);
+    }
+    state.channels = Array.from(seenB.values());
+    ensureSystemFolders();
+    ensurePostNumbers();
+    const hB = (location.hash || "").replace(/^#\/?/, "");
+    const partsB = hB.split("/").filter(Boolean);
+    if (partsB[0]) {
+      const f = state.folders.find(x => x.id === partsB[0]);
+      if (f) state.activeFolderId = f.id;
+    } else {
+      state.activeFolderId = "all";
+    }
+    console.log(`[load] bundle: ${state.channels.length} channels in ${Math.round(performance.now()-__t0)}ms`);
+    return;
+  }
+
+  // ---- fallback: N+1 walk ----
+  console.log("[load] fallback walk");
+  let userFolders = [];
+  try { userFolders = __parseFoldersMd(await __dataReadText("folders.md")); } catch (e) {}
+  state.folders = sysFolders.slice(0, 3).concat(userFolders);
+
+  // folder id -> display name (and name -> id)
+  const nameById = {};
+  const idByName = {};
+  userFolders.forEach(f => {
+    nameById[f.id] = f.name || f.id;
+    idByName[f.name || f.id] = f.id;
+  });
+
+  const channels = [];
+
+  async function readChannelDir(folderPath, chName) {
+    const rel = folderPath ? (folderPath + "/" + chName) : chName;
+    let metaText = "";
+    try { metaText = await __dataReadText(rel + "/meta.md"); }
+    catch (e) {
+      try { metaText = await __dataReadText(rel + "/_channel.md"); } catch (e2) {}
+    }
+    const meta = __parseChannelMeta(metaText, chName);
+
+    let posts = [];
+    try {
+      const j = await __dataListDir(rel);
+      const mdFiles = (j.entries || []).filter(n => /^\d+\.md$/.test(n));
+      mdFiles.sort((a, b) => parseInt(a) - parseInt(b));
+      for (const f of mdFiles) {
+        const num = parseInt(f);
+        let body = "";
+        try { body = await __dataReadText(rel + "/" + f); } catch (e) {}
+        posts.push({ id: "p" + num, number: num, body: body.replace(/\n$/, "") });
+      }
+    } catch (e) {}
+
+    // folderIds: trust meta if it has a list, else infer
+    let folderIds = null;
+    if (Array.isArray(meta.folderIds) && meta.folderIds.length) {
+      folderIds = meta.folderIds.slice();
+    } else {
+      folderIds = ["all"];
+      if (folderPath === "_archived") folderIds.push("archived");
+      else if (folderPath && folderPath !== "_unfolderized") {
+        const fid = idByName[folderPath];
+        if (fid) folderIds.push(fid);
+      }
+    }
+
+    channels.push({
+      id: meta.id || meta.slug || __slugify(chName),
+      mdId: meta.id || "",
+      title: meta.title || chName,
+      slug: meta.slug || "",
+      emoji: meta.emoji || "",
+      desc: meta.desc || "",
+      avatarColor: meta.avatarColor || null,
+      avatarPath: meta.avatar || null,
+      folderIds,
+      posts
+    });
+  }
+
+  // walk data/
+  let topEntries = [];
+  try { topEntries = (await __dataListDir("")).entries || []; }
+  catch (e) { console.error("data/ list failed:", e); state.channels = []; return; }
+
+  // _unfolderized
+  try {
+    const j = await __dataListDir("_unfolderized");
+    for (const name of (j.entries || [])) {
+      if (name.endsWith(".md")) continue;
+      await readChannelDir("_unfolderized", name);
     }
   } catch (e) {}
 
+  // _archived
+  try {
+    const j = await __dataListDir("_archived");
+    for (const name of (j.entries || [])) {
+      if (name.endsWith(".md")) continue;
+      await readChannelDir("_archived", name);
+    }
+  } catch (e) {}
+
+  // user folders — scan each unique directory only once
+  const scannedDirs = new Set();
+  for (const f of userFolders) {
+    const dirName = f.name || f.id;
+    if (scannedDirs.has(dirName)) continue;
+    scannedDirs.add(dirName);
+    let j = null;
+    try { j = await __dataListDir(dirName); } catch (e) { continue; }
+    for (const name of (j.entries || [])) {
+      if (name.endsWith(".md")) continue;
+      await readChannelDir(dirName, name);
+    }
+  }
+
+  // dedupe channels by id (a channel might be reachable from more than one dir)
+  const seen = new Map();
+  for (const ch of channels) {
+    if (!seen.has(ch.id)) {
+      seen.set(ch.id, ch);
+    } else {
+      // merge folderIds
+      const existing = seen.get(ch.id);
+      for (const fid of ch.folderIds) {
+        if (!existing.folderIds.includes(fid)) existing.folderIds.push(fid);
+      }
+    }
+  }
+  state.channels = Array.from(seen.values());
   ensureSystemFolders();
   ensurePostNumbers();
+
+  // current folder from URL hash
+  const h = (location.hash || "").replace(/^#\/?/, "");
+  const parts = h.split("/").filter(Boolean);
+  if (parts[0]) {
+    const f = state.folders.find(x => x.id === parts[0]);
+    if (f) state.activeFolderId = f.id;
+  } else {
+    state.activeFolderId = "all";
+  }
+}
+
+// ---------- save ----------
+// Where on disk does this channel live?
+function __channelDir(ch) {
+  if (ch.folderIds.includes("archived")) {
+    return "_archived/" + __slugify(ch.slug || ch.mdId || ch.id);
+  }
+  const userF = state.folders.find(f =>
+    !f.isAll && !f.isSystem && ch.folderIds.includes(f.id));
+  if (userF) {
+    return (userF.name || userF.id) + "/" + __slugify(ch.slug || ch.mdId || ch.id);
+  }
+  return "_unfolderized/" + __slugify(ch.slug || ch.mdId || ch.id);
+}
+
+async function __saveChannelMeta(ch) {
+  const rel = __channelDir(ch);
+  try { await __dataWriteEmpty(rel + "/"); } catch (e) {}
+  await __dataWriteText(rel + "/meta.md", __serializeChannelMeta(ch));
+}
+
+async function saveState() {
+  try { await __dataWriteText("folders.md", __serializeFoldersMd(state.folders)); } catch (e) {}
+  for (const ch of state.channels) {
+    try { await __saveChannelMeta(ch); } catch (e) {}
+  }
+}
+
+async function __savePost(ch, post) {
+  const rel = __channelDir(ch) + "/" + post.number + ".md";
+  try { await __dataWriteText(rel, (post.body || "") + "\n"); } catch (e) {}
+}
+async function __deletePost(ch, number) {
+  const rel = __channelDir(ch) + "/" + number + ".md";
+  try { await __dataDelete(rel); } catch (e) {}
 }
 
 function ensurePostNumbers() {
@@ -941,37 +1340,14 @@ function ensureSystemFolders() {
     if (allIdx >= 0) state.folders.splice(allIdx + 1, 0, unfold);
     else state.folders.unshift(unfold);
   }
-  // гарантируем c.archived = false у всех
-  state.channels.forEach(c => { if (c.archived !== true) c.archived = false; });
+
 }
 
 function hasArchived() {
-  return state.channels.some(c => c.archived);
+  return state.channels.some(c => c.folderIds.includes('archived'));
 }
 
-async function saveState() {
-  const payload = {
-    folders: state.folders,
-    channels: state.channels,
-    activeFolderId: state.activeFolderId
-  };
-
-  // localStorage — синхронно, всегда
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-  } catch (e) {}
-
-  // data.json через сервер — если доступен
-  try {
-    await fetch('./save', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-  } catch (e) {
-    // сервер не запущен — работаем только на localStorage
-  }
-}
+/* old saveState removed — file-driven layer above */
 
 function renderSidebar() {
   sidebarEl.innerHTML = '';
@@ -999,6 +1375,11 @@ function renderSidebar() {
     `;
     el.addEventListener('click', () => selectFolder(f.id));
     el.addEventListener('contextmenu', (e) => {
+      // ПКМ по подписи папки — не перехватываем (пусть браузер)
+      const t = e.target;
+      if (t.closest('.folder-label')) {
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       if (f.isAll || f.isSystem) return;
@@ -1042,24 +1423,29 @@ function renderChannels() {
   const folder = state.folders.find(f => f.id === state.activeFolderId);
   mainTitleEl.textContent = folder.name || (folder.isAll ? 'All chats' : 'Folder');
 
+  const expBtn = document.getElementById('export-md-btn');
+  if (expBtn) {
+    expBtn.style.display = (state.activeFolderId === 'all') ? '' : 'none';
+  }
+
   let visible;
   if (state.activeFolderId === 'archived') {
-    // только архивные
-    visible = state.channels.filter(c => c.archived === true);
+    // только каналы с 'archived' в folderIds
+    visible = state.channels.filter(c => c.folderIds.includes('archived'));
   } else if (state.activeFolderId === 'unfold') {
-    // неразложенные + НЕ архивные
+    // неразложенные: нет пользовательских папок (archived не учитываем)
     const userFolderIds = state.folders
       .filter(f => !f.isAll && !f.isSystem)
       .map(f => f.id);
     visible = state.channels.filter(c =>
-      c.archived !== true &&
       !c.folderIds.some(id => userFolderIds.includes(id))
     );
   } else if (state.activeFolderId === 'all') {
-    // All chats — скрываем архивные
+    // All chats — показываем все каналы с folderIds.includes('all')
+    // (архивность определяется наличием 'archived' в folderIds, а не флагом c.archived)
     visible = state.channels.filter(c =>
-      c.archived !== true &&
-      c.folderIds.includes('all')
+      c.folderIds.includes('all') &&
+      !c.folderIds.includes('archived')
     );
   } else {
     // пользовательская папка — показываем ВСЁ, включая архивные
@@ -1134,6 +1520,16 @@ function renderChannels() {
 
 
     row.addEventListener('contextmenu', (e) => {
+      // ПКМ по тексту / ссылке / эмодзи — не перехватываем
+      const t = e.target;
+      const isText = t.closest('.channel-info') || t.closest('.channel-title') || t.closest('.channel-desc') || t.closest('a');
+      const isAvatar = t.closest('.channel-avatar');
+      const isArchive = t.closest('.archive-btn');
+      const isNewRow = t.closest('.channel-row-new');
+      if (isText && !isAvatar && !isArchive && !isNewRow) {
+        // дать браузеру показать своё меню
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       openChannelModal(c.id);
@@ -1290,7 +1686,7 @@ function openNewFolderModal() {
   const id = 'f' + Date.now();
   state.folders.push({
     id,
-    name: 'New folder',
+    name: '',
     icon: '📁',
     isAll: false,
     included: [],
@@ -1314,7 +1710,7 @@ function openFolderModal(folderId) {
     <input type="text" id="fm-icon" maxlength="4" value="${escapeAttr(f.icon || '')}" style="width:80px;text-align:center;font-size:20px;">
 
     <label>Folder name</label>
-    <input type="text" id="fm-name" value="${escapeAttr(f.name)}">
+    <input type="text" id="fm-name" value="${escapeAttr(f.name)}" placeholder="New folder">
 
     <label>Included chats</label>
     <input type="text" id="fm-search" placeholder="Search chats..." autocomplete="off">
@@ -1419,7 +1815,7 @@ function closeFolderModal() {
 function saveFolderModal() {
   const f = state.folders.find(x => x.id === state.editingFolderId);
   if (!f) return;
-  f.name = folderModalEl.querySelector('#fm-name').value.trim() || f.name;
+  f.name = folderModalEl.querySelector('#fm-name').value.trim() || 'New folder';
   const iconVal = folderModalEl.querySelector('#fm-icon').value.trim();
   f.icon = iconVal; // может быть пустой строкой — тогда иконка не рисуется
   f.included = Array.from(folderModalEl.querySelectorAll('#fm-included input:checked')).map(i => i.dataset.channelId);
@@ -1760,6 +2156,10 @@ function saveChannelModalAndGetId(emoji) {
 
   renderChannels();
   saveState();
+  if (typeof __saveChannelMeta === 'function') {
+    const __ch = state.channels.find(x => x.id === id);
+    if (__ch) __saveChannelMeta(__ch);
+  }
   return id;
 }
 
@@ -1819,30 +2219,6 @@ function linkify(text) {
   // 1) HTML-санитайз (разрешаем b,i,u,s,code,br,a)
   let out = sanitizeHtml(text || '');
 
-  // 2) [link] или [link|text] -> кликабельно.
-  //    Внутри скобок можно пробелы и что угодно, кроме ].
-  //    Разделитель | отделяет цель от отображаемого текста.
-  //    Если цель похожа на URL (http/https) — рендерим как обычную ссылку,
-  //    иначе как local-link (открывается через /open).
-  out = out.replace(
-    /\[([^\]\n]+)\]/g,
-    (m, inner) => {
-      let target = inner.trim();
-      let label = target;
-      const pipe = target.indexOf('|');
-      if (pipe !== -1) {
-        label = target.slice(pipe + 1).trim();
-        target = target.slice(0, pipe).trim();
-      }
-      const safeTarget = target.replace(/"/g, '&quot;');
-      const safeLabel = label.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      if (/^https?:\/\//i.test(target)) {
-        return `<a href="${safeTarget}" target="_blank" rel="noopener">${safeLabel}</a>`;
-      }
-      return `<span class="local-link" data-path="${safeTarget}">${safeLabel}</span>`;
-    }
-  );
-
   // 3) авто-ссылки для http(s) в голом тексте
   out = out.replace(
     /(^|[^"'>=])(https?:\/\/[^\s<]+)/g,
@@ -1896,7 +2272,7 @@ function openChannelView(channelId, postNumber, skipPush) {
     requestAnimationFrame(() => {
       const el = channelPostsEl.querySelector('.post[data-post-number="' + postNumber + '"]');
       if (!el) return;
-      el.scrollIntoView({ block: 'center' });
+      el.scrollIntoView({ block: 'start' });
       el.classList.add('highlight-post');
       setTimeout(() => el.classList.remove('highlight-post'), 2000);
     });
@@ -1972,8 +2348,14 @@ function renderChannelView() {
       el.className = 'post' + (p.id === editingPostId ? ' editing' : '');
       el.dataset.postId = p.id;
       el.dataset.postNumber = p.number || '';
+      if (posts[posts.length - 1] === p) el.classList.add('can-have-tail');
       el.innerHTML = linkify(p.body || '');
       el.addEventListener('contextmenu', (e) => {
+        // ПКМ по тексту/ссылке — не перехватываем, даём браузеру
+        const t = e.target;
+        if (t !== el && (t.nodeType === 3 || t.closest('a') || t.closest('.local-link'))) {
+          return;
+        }
         e.preventDefault();
         e.stopPropagation();
         showPostContextMenu(e, p.id);
@@ -1992,7 +2374,7 @@ function submitPost() {
   if (editingPostId) {
     // обновляем пост
     const p = (c.posts || []).find(x => x.id === editingPostId);
-    if (p) p.body = body;
+    if (p) { p.body = body; if (typeof __savePost === 'function') __savePost(c, p); }
     // pop edit-черновик
     popDraft(c.id);
     editingPostId = null;
@@ -2018,7 +2400,9 @@ function submitPost() {
   } else {
     if (!c.posts) c.posts = [];
     const maxNum = c.posts.reduce((m, p) => Math.max(m, p.number || 0), 0);
-    c.posts.push({ id: 'p' + Date.now(), number: maxNum + 1, body });
+    const newPost = { id: 'p' + Date.now(), number: maxNum + 1, body };
+    c.posts.push(newPost);
+    if (typeof __savePost === 'function') __savePost(c, newPost);
     // pop new-черновик
     const s = draftsStack[c.id];
     if (s && s.length && s[s.length - 1].kind === 'new') {
@@ -2088,7 +2472,9 @@ function deletePost(postId) {
   const c = getOpenedChannel();
   if (!c || !c.posts) return;
   if (!confirm('Delete this post?')) return;
+  const __removed = c.posts.find(p => p.id === postId);
   c.posts = c.posts.filter(p => p.id !== postId);
+  if (__removed && typeof __deletePost === 'function') __deletePost(c, __removed.number);
   // вычищаем все черновики, связанные с этим постом
   const s = draftsStack[c.id];
   if (s) {
@@ -2261,11 +2647,28 @@ document.addEventListener('copy', (e) => {
 
 // делегированный клик по локальным ссылкам внутри постов
 channelPostsEl.addEventListener('click', (e) => {
+  // 1) .local-link (бывший [C:\...])
   const el = e.target.closest('.local-link');
-  if (!el) return;
-  e.preventDefault();
-  const path = el.dataset.path;
-  if (!path) return;
+  if (el) {
+    e.preventDefault();
+    const path = el.dataset.path;
+    if (!path) return;
+    openLocalPath(path);
+    return;
+  }
+  // 2) <a href="C:\..."> — локальный путь в href
+  const a = e.target.closest('a');
+  if (a && a.href) {
+    const raw = a.getAttribute('href') || '';
+    if (isLocalPath(raw)) {
+      e.preventDefault();
+      openLocalPath(normalizeLocalPath(raw));
+      return;
+    }
+  }
+});
+
+function openLocalPath(path) {
   fetch('./open', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -2279,7 +2682,7 @@ channelPostsEl.addEventListener('click', (e) => {
   }).catch(err => {
     alert('Server not responding. Is server.py running?\n\n' + err);
   });
-});
+}
 
 channelSendEl.addEventListener('click', submitPost);
 channelBackEl.addEventListener('click', () => {
@@ -2334,14 +2737,18 @@ document.getElementById('bio-overlay').addEventListener('click', (e) => {
   if (ll && overlay.contains(ll)) {
     e.preventDefault();
     const path = ll.dataset.path;
-    if (path) {
-      fetch('./open', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path })
-      }).catch(() => {});
-    }
+    if (path) openLocalPath(path);
     return;
+  }
+  // <a href="C:\..."> внутри bio
+  const a = e.target.closest('a');
+  if (a && overlay.contains(a) && a.href) {
+    const raw = a.getAttribute('href') || '';
+    if (isLocalPath(raw)) {
+      e.preventDefault();
+      openLocalPath(normalizeLocalPath(raw));
+      return;
+    }
   }
   if (e.target === overlay || e.target.classList.contains('bio-close')) {
     overlay.classList.remove('open');
@@ -2379,7 +2786,7 @@ function showPostContextMenu(e, postId) {
 function archiveChannel(channelId) {
   const c = state.channels.find(x => x.id === channelId);
   if (!c) return;
-  c.archived = true;
+  if (!c.folderIds.includes('archived')) c.folderIds.push('archived');
   renderSidebar();
   renderChannels();
   saveState();
@@ -2388,7 +2795,7 @@ function archiveChannel(channelId) {
 function unarchiveChannel(channelId) {
   const c = state.channels.find(x => x.id === channelId);
   if (!c) return;
-  c.archived = false;
+  c.folderIds = c.folderIds.filter(id => id !== 'archived');
   renderSidebar();
   renderChannels();
   saveState();
@@ -2530,11 +2937,38 @@ function escapeHtml(s) {
 function escapeAttr(s) { return escapeHtml(s); }
 
 /* =========================================================
+   EXPORT MD
+   ========================================================= */
+async function exportMarkdown() {
+  const defPath = 'C:\\Users\\user\\exports\\channels';
+  const outPath = prompt('Export path (folder where .md files will be written):', defPath);
+  if (!outPath) return;
+  try {
+    const r = await fetch('./export', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: outPath })
+    });
+    if (!r.ok) {
+      const t = await r.text().catch(() => '');
+      alert('Export failed: ' + r.status + '\n' + t);
+      return;
+    }
+    const j = await r.json();
+    alert('Export done. Files written: ' + (j.files || 0));
+  } catch (e) {
+    alert('Export failed: ' + e);
+  }
+}
+
+/* =========================================================
    INIT
    ========================================================= */
 (async function init() {
   await loadState();
   parseLocation();
+  const expBtn = document.getElementById('export-md-btn');
+  if (expBtn) expBtn.addEventListener('click', exportMarkdown);
 })();
 
 folderModalOverlay.addEventListener('click', e => {
